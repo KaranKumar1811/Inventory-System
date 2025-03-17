@@ -1,0 +1,724 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard - Uniform Inventory System{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Logo styling */
+  .dashboard-logo {
+    width: 150px;
+    height: 150px;
+    margin-right: 25px;
+    transition: all 0.3s ease;
+  }
+  
+  /* Responsive adjustments for dashboard header */
+  @media (max-width: 768px) {
+    .dashboard-logo {
+      width: 120px;
+      height: 120px;
+      margin-right: 20px;
+    }
+  }
+  
+  @media (max-width: 576px) {
+    .dashboard-header {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    
+    .dashboard-logo {
+      margin-right: 0;
+      margin-bottom: 15px;
+    }
+  }
+
+  .card {
+    transition: transform 0.3s;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 10px rgba(0,0,0,0.15);
+    z-index: 10;
+  }
+  
+  /* Consistent spacing between all rows */
+  .dashboard-row {
+    margin-bottom: 20px;
+  }
+  
+  /* Remove any negative margins or special overrides */
+  .stock-status-card .card-header {
+    margin-bottom: 0 !important;
+    padding-bottom: 5px !important;
+    border-bottom: none !important;
+  }
+  
+  .stock-status-card .card-body {
+    padding-top: 5px !important;
+  }
+  
+  .stock-status-card .row .col-md-6 {
+    margin-bottom: 10px;
+  }
+  
+  /* Fixed height cards with scrollable content */
+  .dashboard-card {
+    height: 600px; /* Increased from 500px to 600px for taller cards */
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .dashboard-card .card-body {
+    flex: 1;
+    overflow-y: auto; /* Make content scrollable */
+    /* Styling for the scrollbar */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,0.2) transparent;
+  }
+  
+  .dashboard-card .card-body::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .dashboard-card .card-body::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .dashboard-card .card-body::-webkit-scrollbar-thumb {
+    background-color: rgba(0,0,0,0.2);
+    border-radius: 10px;
+  }
+  
+  /* Inner cards in Financial Overview and Stock Status sections */
+  .dashboard-card .inner-cards-container {
+    overflow-y: auto;
+    height: 100%;
+    padding: 5px;
+  }
+  
+  /* Inner card spacing in multi-card sections */
+  .dashboard-card .card {
+    margin-bottom: 15px;
+    border-radius: 8px;
+  }
+  
+  .dashboard-card .card:last-child {
+    margin-bottom: 0;
+  }
+  
+  /* Financial overview inner cards */
+  .financial-card {
+    border: none !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    transition: all 0.2s ease;
+    height: 100%;
+  }
+  
+  .financial-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+  }
+  
+  .financial-card .card-body {
+    padding: 15px;
+  }
+  
+  .financial-value {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+  }
+  
+  .financial-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-bottom: 0;
+  }
+  
+  .total-asset-card {
+    background-color: #f8f9fa;
+    border-left: 4px solid #343a40 !important;
+  }
+  
+  .inventory-card {
+    border-left: 4px solid #28a745 !important;
+  }
+  
+  .distributed-card {
+    border-left: 4px solid #007bff !important;
+  }
+  
+  /* Stock Status Overview styling */
+  .stock-status-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: space-between;
+  }
+  
+  .stock-status-item {
+    flex: 1 0 45%;
+    min-width: 200px;
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    position: relative;
+    transition: all 0.2s;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  
+  .stock-status-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+  }
+  
+  .stock-status-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 4px;
+  }
+  
+  .critical-status::before {
+    background-color: #dc3545;
+  }
+  
+  .warning-status::before {
+    background-color: #ffc107;
+  }
+  
+  .info-status::before {
+    background-color: #17a2b8;
+  }
+  
+  .healthy-status::before {
+    background-color: #28a745;
+  }
+  
+  .stock-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    margin-bottom: 10px;
+  }
+  
+  .critical-icon {
+    color: white;
+    background-color: #dc3545;
+  }
+  
+  .warning-icon {
+    color: white;
+    background-color: #ffc107;
+  }
+  
+  .info-icon {
+    color: white;
+    background-color: #17a2b8;
+  }
+  
+  .healthy-icon {
+    color: white;
+    background-color: #28a745;
+  }
+  
+  .stock-count {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 10px 0;
+    line-height: 1;
+  }
+  
+  .critical-count {
+    color: #dc3545;
+  }
+  
+  .warning-count {
+    color: #ffc107;
+  }
+  
+  .info-count {
+    color: #17a2b8;
+  }
+  
+  .healthy-count {
+    color: #28a745;
+  }
+  
+  .stock-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+  }
+  
+  .stock-subtitle {
+    font-size: 0.8rem;
+    color: #6c757d;
+  }
+  
+  .stats-card {
+    text-align: center;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .stats-icon {
+    font-size: 2rem;
+    margin-bottom: 10px;
+  }
+  .stats-number {
+    font-size: 2.5rem;
+    font-weight: bold;
+  }
+  .stats-label {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.85);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    margin-bottom: 8px;
+  }
+  .bg-gradient-primary {
+    background: linear-gradient(45deg, #007bff, #00c6ff);
+    color: white;
+  }
+  .bg-gradient-success {
+    background: linear-gradient(45deg, #28a745, #5cb85c);
+    color: white;
+  }
+  .bg-gradient-warning {
+    background: linear-gradient(45deg, #ffc107, #f7b924);
+    color: white;
+  }
+  .bg-gradient-danger {
+    background: linear-gradient(45deg, #dc3545, #ff6b6b);
+    color: white;
+  }
+  .bg-light-hover:hover {
+    background-color: rgba(0,0,0,0.03);
+  }
+  .alert-low-stock {
+    background-color: #fff3cd;
+    border-left: 4px solid #ffc107;
+  }
+  .table-hover-custom tr:hover {
+    background-color: rgba(0,123,255,0.05);
+  }
+  .dashboard-header {
+    padding: 20px 0;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #eee;
+  }
+  .badge-stock-level {
+    font-size: 0.8rem;
+    padding: 5px 8px;
+  }
+  
+  .view-inventory-btn {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 8px 16px;
+    background-color: #f8f9fa;
+    border: 1px solid #007bff;
+    color: #007bff;
+    border-radius: 4px;
+    font-weight: 500;
+    transition: all 0.2s;
+    text-decoration: none;
+  }
+  
+  .view-inventory-btn:hover {
+    background-color: #007bff;
+    color: white;
+  }
+  
+  .view-inventory-btn i {
+    margin-right: 5px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header d-flex align-items-center">
+  <img src="{% static 'inventory/images/Round_logo.png' %}" alt="Logo" class="dashboard-logo">
+  <div>
+    <h1 class="mb-0 display-4">Dashboard</h1>
+    <p class="lead text-muted">Uniform Inventory System overview</p>
+  </div>
+</div>
+
+<!-- Summary Statistics -->
+<div class="row dashboard-row">
+  <div class="col-md-3">
+    <div class="card stats-card bg-gradient-primary">
+      <div class="card-body">
+        <div class="stats-icon">
+          <i class="bi bi-people-fill"></i>
+        </div>
+        <div class="stats-number">{{ total_employees }}</div>
+        <div class="stats-label">Employees</div>
+      </div>
+      <div class="card-footer bg-white">
+        <a href="{% url 'inventory:employee_list' %}" class="btn btn-sm btn-outline-primary w-100">View All</a>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-3">
+    <div class="card stats-card bg-gradient-success">
+      <div class="card-body">
+        <div class="stats-icon">
+          <i class="bi bi-box-seam-fill"></i>
+        </div>
+        <div class="stats-number">{{ total_uniforms }}</div>
+        <div class="stats-label">Uniform Items</div>
+      </div>
+      <div class="card-footer bg-white">
+        <a href="{% url 'inventory:uniform_list' %}" class="btn btn-sm btn-outline-success w-100">View All</a>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-3">
+    <div class="card stats-card bg-gradient-warning">
+      <div class="card-body">
+        <div class="stats-icon">
+          <i class="bi bi-arrow-left-right"></i>
+        </div>
+        <div class="stats-number">{{ transactions_this_month }}</div>
+        <div class="stats-label">Transactions (30d)</div>
+      </div>
+      <div class="card-footer bg-white">
+        <a href="{% url 'inventory:transaction_create' %}" class="btn btn-sm btn-outline-warning w-100">New Transaction</a>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-3">
+    <div class="card stats-card bg-gradient-danger">
+      <div class="card-body">
+        <div class="stats-icon">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+        </div>
+        <div class="stats-number">{{ low_stock_uniforms.count }}</div>
+        <div class="stats-label">Low Stock Items</div>
+      </div>
+      <div class="card-footer bg-white">
+        <a href="#low-stock-section" class="btn btn-sm btn-outline-danger w-100">View Details</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Low Stock Warning -->
+<div class="row dashboard-row" id="low-stock-section">
+  <div class="col-md-12">
+    <div class="card">
+      <div class="card-header bg-warning text-dark">
+        <h5 class="mb-0"><i class="bi bi-exclamation-triangle-fill"></i> Low Stock Warning</h5>
+      </div>
+      <div class="card-body">
+        {% if low_stock_uniforms %}
+          <div class="table-responsive">
+            <table class="table table-hover table-hover-custom">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Size</th>
+                  <th>Price</th>
+                  <th>Stock Level</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for uniform in low_stock_uniforms %}
+                <tr>
+                  <td>{{ uniform.name }}</td>
+                  <td>{{ uniform.size }}</td>
+                  <td>${{ uniform.price }}</td>
+                  <td>
+                    {% if uniform.stock_quantity < 5 %}
+                      <span class="badge bg-danger badge-stock-level">Critical: {{ uniform.stock_quantity }}</span>
+                    {% elif uniform.stock_quantity < 10 %}
+                      <span class="badge bg-warning text-dark badge-stock-level">Low: {{ uniform.stock_quantity }}</span>
+                    {% else %}
+                      <span class="badge bg-info text-dark badge-stock-level">Warning: {{ uniform.stock_quantity }}</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <a href="{% url 'admin:inventory_uniform_change' uniform.id %}" class="btn btn-sm btn-outline-primary">Manage</a>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="alert alert-success mb-0">
+            <i class="bi bi-check-circle-fill"></i> All uniform items have sufficient stock levels.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row dashboard-row">
+  <!-- Uniform Stock Status Overview (Moved to First Position) -->
+  <div class="col-md-6">
+    <div class="card dashboard-card">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="bi bi-pie-chart-fill"></i> Uniform Stock Status Overview</h5>
+      </div>
+      <div class="card-body">
+        <div class="stock-status-container">
+          <!-- Critical Stock -->
+          <div class="stock-status-item critical-status">
+            <div class="text-center">
+              <div class="stock-icon critical-icon">
+                <i class="bi bi-exclamation-circle-fill"></i>
+              </div>
+              <div class="stock-count critical-count">{{ critical_stock_count }}</div>
+              <div class="stock-title">Critical Stock</div>
+              <div class="stock-subtitle">&lt; 5 items</div>
+            </div>
+          </div>
+          
+          <!-- Low Stock -->
+          <div class="stock-status-item warning-status">
+            <div class="text-center">
+              <div class="stock-icon warning-icon">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+              </div>
+              <div class="stock-count warning-count">{{ low_stock_count }}</div>
+              <div class="stock-title">Low Stock</div>
+              <div class="stock-subtitle">&lt; 10 items</div>
+            </div>
+          </div>
+          
+          <!-- Warning Level -->
+          <div class="stock-status-item info-status">
+            <div class="text-center">
+              <div class="stock-icon info-icon">
+                <i class="bi bi-info-circle-fill"></i>
+              </div>
+              <div class="stock-count info-count">{{ warning_stock_count }}</div>
+              <div class="stock-title">Warning Level</div>
+              <div class="stock-subtitle">&lt; 25 items</div>
+            </div>
+          </div>
+          
+          <!-- Healthy Stock -->
+          <div class="stock-status-item healthy-status">
+            <div class="text-center">
+              <div class="stock-icon healthy-icon">
+                <i class="bi bi-check-circle-fill"></i>
+              </div>
+              <div class="stock-count healthy-count">{{ healthy_stock_count }}</div>
+              <div class="stock-title">Healthy Stock</div>
+              <div class="stock-subtitle">≥ 25 items</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="text-center mt-4">
+          <a href="{% url 'inventory:uniform_list' %}" class="view-inventory-btn">
+            <i class="bi bi-box-seam"></i> View All Inventory
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Financial Overview -->
+  <div class="col-md-6">
+    <div class="card dashboard-card">
+      <div class="card-header bg-success text-white">
+        <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Financial Overview</h5>
+      </div>
+      <div class="card-body">
+        <div class="inner-cards-container">
+          <div class="row mb-3">
+            <!-- Inventory Value -->
+            <div class="col-md-6">
+              <div class="card financial-card inventory-card h-100">
+                <div class="card-body text-center">
+                  <div class="mb-3"><i class="bi bi-box-seam-fill text-success" style="font-size: 2rem;"></i></div>
+                  <div class="financial-value text-success">${{ inventory_value|floatformat:2 }}</div>
+                  <p class="financial-label">Inventory Value</p>
+                  <small class="text-muted">Items in stock</small>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Distributed Value -->
+            <div class="col-md-6">
+              <div class="card financial-card distributed-card h-100">
+                <div class="card-body text-center">
+                  <div class="mb-3"><i class="bi bi-people-fill text-primary" style="font-size: 2rem;"></i></div>
+                  <div class="financial-value text-primary">${{ distributed_value|floatformat:2 }}</div>
+                  <p class="financial-label">Distributed Value</p>
+                  <small class="text-muted">Items with employees</small>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="row mb-3">
+            <!-- Damaged Items Value -->
+            <div class="col-md-6">
+              <a href="{% url 'inventory:damaged_items_report' %}" class="text-decoration-none">
+                <div class="card financial-card h-100" style="border-left: 4px solid #dc3545 !important; transition: transform 0.2s;">
+                  <div class="card-body text-center">
+                    <div class="mb-3"><i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 2rem;"></i></div>
+                    <div class="financial-value text-danger">${{ damaged_value|floatformat:2 }}</div>
+                    <p class="financial-label">Damaged Item Value</p>
+                    <small class="text-muted">Items returned damaged</small>
+                    <div class="mt-2 small text-primary">
+                      <i class="bi bi-eye"></i> View Details
+                    </div>
+                  </div>
+                </div>
+              </a>
+            </div>
+            
+            <!-- Total Asset Value (moved to grid) -->
+            <div class="col-md-6">
+              <div class="card financial-card total-asset-card h-100">
+                <div class="card-body text-center">
+                  <div class="mb-3"><i class="bi bi-calculator text-dark" style="font-size: 2rem;"></i></div>
+                  <div class="financial-value text-dark">${{ inventory_value|add:distributed_value|floatformat:2 }}</div>
+                  <p class="financial-label">Total Asset Value</p>
+                  <small class="text-muted">Excluding damaged items</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row dashboard-row">
+  <!-- Most Active Employees -->
+  <div class="col-md-6">
+    <div class="card dashboard-card">
+      <div class="card-header bg-success text-white">
+        <h5 class="mb-0"><i class="bi bi-person-badge"></i> Most Active Employees</h5>
+      </div>
+      <div class="card-body p-0">
+        {% if most_active_employees %}
+          <div class="table-responsive">
+            <table class="table table-hover table-hover-custom mb-0">
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>ID</th>
+                  <th>Transactions</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for employee in most_active_employees %}
+                <tr>
+                  <td>{{ employee.first_name }} {{ employee.last_name }}</td>
+                  <td>{{ employee.employee_id }}</td>
+                  <td>{{ employee.transaction_count }}</td>
+                  <td>
+                    <a href="{% url 'inventory:employee_detail' employee.id %}" class="btn btn-sm btn-outline-success">View</a>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="p-3 text-center text-muted">
+            No active employees found in the last 30 days.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  
+  <!-- Recent Transactions (Moved to Last Position) -->
+  <div class="col-md-6">
+    <div class="card transactions-section dashboard-card">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent Transactions</h5>
+      </div>
+      <div class="card-body p-0">
+        {% if recent_transactions %}
+          <div class="list-group list-group-flush">
+            {% for transaction in recent_transactions %}
+              <a href="{% url 'inventory:employee_detail' transaction.employee.id %}#transaction-{{ transaction.id }}" class="list-group-item list-group-item-action bg-light-hover transaction-item" style="text-decoration: none; color: inherit;">
+                <div class="d-flex w-100 justify-content-between">
+                  <h6 class="mb-1">{{ transaction.employee }}</h6>
+                  <small>{{ transaction.transaction_date|date:"M d, Y" }}</small>
+                </div>
+                
+                {% if transaction.loaned %}
+                  <span class="badge bg-success text-white" style="padding: 6px 10px; margin-bottom: 8px;">
+                    <i class="bi bi-arrow-repeat me-1"></i>Loaned
+                  </span>
+                {% else %}
+                  <span class="badge bg-primary text-white" style="padding: 6px 10px; margin-bottom: 8px;">
+                    <i class="bi bi-bag-check me-1"></i>Purchased
+                  </span>
+                {% endif %}
+                
+                <div class="transaction-items mt-2">
+                  <ul class="list-unstyled mb-1" style="font-size: 0.9rem;">
+                    {% for item in transaction.items.all %}
+                      <li class="mb-1">
+                        <i class="bi bi-dot me-1"></i>
+                        <strong>{{ item.quantity }}</strong> × {{ item.uniform.name }} ({{ item.uniform.size }})
+                      </li>
+                    {% endfor %}
+                  </ul>
+                </div>
+                
+                <small class="text-muted d-block mt-1">Payment: {{ transaction.get_payment_option_display }}</small>
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="p-3 text-center text-muted">
+            No recent transactions found.
+          </div>
+        {% endif %}
+      </div>
+      <div class="card-footer">
+        <a href="{% url 'inventory:transaction_create' %}" class="btn btn-outline-primary btn-sm">Create New Transaction</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // You can add JavaScript here for any dashboard interactivity
+  document.addEventListener('DOMContentLoaded', function() {
+    // Add smooth scrolling for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        document.querySelector(this.getAttribute('href')).scrollIntoView({
+          behavior: 'smooth'
+        });
+      });
+    });
+  });
+</script>
+{% endblock %} 

@@ -1,0 +1,260 @@
+{% extends 'base.html' %}
+{% load inventory_extras %}
+
+{% block title %}Damaged Items Report{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-12">
+      <h1>Damaged Items Report</h1>
+      <p class="lead">Summary of all damaged and unusable uniform items</p>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="row mt-4">
+    <div class="col-md-6 col-lg-3 mb-4">
+      <div class="card h-100 border-danger">
+        <div class="card-body text-center">
+          <h5 class="card-title">Total Damaged Items</h5>
+          <p class="display-4">{{ total_damaged }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3 mb-4">
+      <div class="card h-100 border-danger">
+        <div class="card-body text-center">
+          <h5 class="card-title">Total Value</h5>
+          <p class="display-4">${{ total_value|floatformat:2 }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3 mb-4">
+      <div class="card h-100 border-danger">
+        <div class="card-body text-center">
+          <h5 class="card-title">Types of Damage</h5>
+          <p class="display-4">{{ damage_type_stats|length }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3 mb-4">
+      <div class="card h-100 border-danger">
+        <div class="card-body text-center">
+          <h5 class="card-title">Affected Uniforms</h5>
+          <p class="display-4">{{ uniform_damaged|length }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Damage by Type -->
+  <div class="row mt-4">
+    <div class="col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header bg-danger text-white">
+          <h5 class="mb-0">Damage by Type</h5>
+        </div>
+        <div class="card-body">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Damage Type</th>
+                <th class="text-end">Quantity</th>
+                <th class="text-end">% of Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for type, count in damage_type_stats.items %}
+              <tr>
+                <td>{{ type }}</td>
+                <td class="text-end">{{ count }}</td>
+                <td class="text-end">{{ count|div:total_damaged|mul:100|floatformat:1 }}%</td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="3" class="text-center">No damaged items recorded</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Damage by Uniform -->
+    <div class="col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header bg-danger text-white">
+          <h5 class="mb-0">Damage by Uniform</h5>
+        </div>
+        <div class="card-body">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Uniform</th>
+                <th class="text-end">Quantity</th>
+                <th class="text-end">Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for uniform, count in uniform_damaged.items %}
+              <tr>
+                <td>{{ uniform.name }}</td>
+                <td class="text-end">{{ count }}</td>
+                <td class="text-end">${{ uniform.price|mul:count|floatformat:2 }}</td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="3" class="text-center">No damaged items recorded</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Damaged Returns -->
+  <div class="row mt-4">
+    <div class="col-12 mb-4">
+      <div class="card">
+        <div class="card-header bg-danger text-white">
+          <h5 class="mb-0">Recent Damaged Returns</h5>
+        </div>
+        <div class="card-body">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Employee</th>
+                <th>Uniform</th>
+                <th>Damage Type</th>
+                <th>Quantity</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for record in recent_damages %}
+              <tr>
+                <td>{{ record.return_date|date:"M d, Y" }}</td>
+                <td>
+                  {% if record.transaction %}
+                    {{ record.transaction.employee.first_name }} {{ record.transaction.employee.last_name }}
+                  {% else %}
+                    {{ record.transaction_item.transaction.employee.first_name }} {{ record.transaction_item.transaction.employee.last_name }}
+                  {% endif %}
+                </td>
+                <td>
+                  {% if record.transaction %}
+                    {{ record.transaction.uniform.name }}
+                  {% else %}
+                    {{ record.transaction_item.uniform.name }}
+                  {% endif %}
+                </td>
+                <td>
+                  {% for code, label in record.DAMAGE_TYPE_CHOICES %}
+                    {% if code == record.damage_type %}{{ label }}{% endif %}
+                  {% endfor %}
+                </td>
+                <td>{{ record.damaged_quantity }}</td>
+                <td>{{ record.damage_notes|truncatechars:50 }}</td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="6" class="text-center">No damaged items recorded</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- All Damaged Items (Complete Listing) -->
+  <div class="row mt-4">
+    <div class="col-12 mb-4">
+      <div class="card">
+        <div class="card-header bg-danger text-white">
+          <h5 class="mb-0">All Damaged Items</h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover" id="damaged-items-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Employee</th>
+                  <th>Uniform</th>
+                  <th>Damage Type</th>
+                  <th>Quantity</th>
+                  <th>Transaction</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for record in all_damaged_records %}
+                <tr>
+                  <td>{{ record.date|date:"M d, Y h:i a" }}</td>
+                  <td>
+                    <a href="{% url 'inventory:employee_detail' record.employee.id %}">
+                      {{ record.employee.first_name }} {{ record.employee.last_name }}
+                    </a>
+                  </td>
+                  <td>{{ record.uniform.name }} ({{ record.uniform.size }})</td>
+                  <td>{{ record.damage_type }}</td>
+                  <td>{{ record.damaged_quantity }}</td>
+                  <td>
+                    <a href="{% url 'inventory:employee_detail' record.employee.id %}#transaction-{{ record.transaction_id }}">
+                      View Transaction
+                    </a>
+                  </td>
+                  <td>
+                    {% if record.damage_notes %}
+                      <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="popover" 
+                        title="Damage Notes" data-bs-content="{{ record.damage_notes }}" 
+                        data-bs-trigger="focus">
+                        <i class="bi bi-info-circle"></i> View Notes
+                      </button>
+                    {% else %}
+                      <span class="text-muted">No notes</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="7" class="text-center">No damaged items recorded</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize popovers for damage notes
+    var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
+    var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+      return new bootstrap.Popover(popoverTriggerEl)
+    });
+    
+    // Optional: Add DataTables for sorting/filtering if available
+    if (typeof $.fn.DataTable !== 'undefined') {
+      $('#damaged-items-table').DataTable({
+        "order": [[ 0, "desc" ]],
+        "pageLength": 25
+      });
+    }
+  });
+</script>
+{% endblock %}
+
+{% endblock %} 

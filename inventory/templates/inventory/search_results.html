@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Search Results{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h2 class="mb-0">
+      <i class="bi bi-search me-2"></i>Search Results
+    </h2>
+  </div>
+  <div class="card-body">
+    <form method="GET" action="{% url 'inventory:search' %}" class="mb-4">
+      <div class="row g-3">
+        <div class="col-md-8">
+          {{ form.query }}
+        </div>
+        <div class="col-md-2">
+          {{ form.search_type }}
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-search me-1"></i>Search
+          </button>
+        </div>
+      </div>
+    </form>
+
+    {% if query %}
+      <p class="text-muted mb-4">Results for: <strong>{{ query }}</strong>{% if search_type != 'all' %} in <strong>{{ search_type }}</strong>{% endif %}</p>
+      
+      {% if has_results %}
+        {% if employees.exists and search_type in 'all,employees' %}
+          <h3 class="mt-4 mb-3"><i class="bi bi-people me-2"></i>Employees</h3>
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead class="table-dark">
+                <tr>
+                  <th>Employee ID</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for employee in employees %}
+                <tr>
+                  <td>{{ employee.employee_id }}</td>
+                  <td>{{ employee.first_name }} {{ employee.last_name }}</td>
+                  <td>{{ employee.email|default:"-" }}</td>
+                  <td>{{ employee.phone|default:"-" }}</td>
+                  <td>
+                    <a href="{% url 'inventory:employee_detail' employee.id %}" class="btn btn-sm btn-outline-primary">
+                      <i class="bi bi-eye"></i>
+                    </a>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+        
+        {% if uniforms.exists and search_type in 'all,uniforms' %}
+          <h3 class="mt-4 mb-3"><i class="bi bi-collection me-2"></i>Uniforms</h3>
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead class="table-dark">
+                <tr>
+                  <th>Name</th>
+                  <th>Size</th>
+                  <th>Price</th>
+                  <th>Stock Quantity</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for uniform in uniforms %}
+                <tr>
+                  <td>{{ uniform.name }}</td>
+                  <td>{{ uniform.size }}</td>
+                  <td>${{ uniform.price }}</td>
+                  <td>
+                    <span class="badge {% if uniform.stock_quantity < 5 %}bg-danger{% elif uniform.stock_quantity < 10 %}bg-warning{% elif uniform.stock_quantity < 25 %}bg-info{% else %}bg-success{% endif %}">
+                      {{ uniform.stock_quantity }}
+                      {% if uniform.stock_quantity < 25 %}<i class="bi bi-exclamation-triangle-fill ms-1"></i>{% endif %}
+                    </span>
+                  </td>
+                  <td>
+                    <a href="{% url 'admin:inventory_uniform_change' uniform.id %}" class="btn btn-sm btn-outline-primary" target="_blank">
+                      <i class="bi bi-pencil"></i>
+                    </a>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+        
+        {% if transactions.exists and search_type in 'all,transactions' %}
+          <h3 class="mt-4 mb-3"><i class="bi bi-bag me-2"></i>Transactions</h3>
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead class="table-dark">
+                <tr>
+                  <th>ID</th>
+                  <th>Date</th>
+                  <th>Employee</th>
+                  <th>Payment Option</th>
+                  <th>Loaned</th>
+                  <th>Items</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for transaction in transactions %}
+                <tr>
+                  <td>{{ transaction.id }}</td>
+                  <td>{{ transaction.transaction_date|date:"M d, Y h:i a" }}</td>
+                  <td>
+                    <a href="{% url 'inventory:employee_detail' transaction.employee.id %}">
+                      {{ transaction.employee.first_name }} {{ transaction.employee.last_name }}
+                    </a>
+                  </td>
+                  <td>{{ transaction.get_payment_option_display }}</td>
+                  <td>
+                    {% if transaction.loaned %}
+                      <span class="badge bg-warning">Loaned</span>
+                    {% else %}
+                      <span class="badge bg-success">Paid</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <small>
+                      {% for item in transaction.items.all %}
+                        <div>{{ item.quantity }} × {{ item.uniform.name }} ({{ item.uniform.size }})</div>
+                      {% endfor %}
+                    </small>
+                  </td>
+                  <td>
+                    <a href="{% url 'inventory:employee_detail' transaction.employee.id %}" class="btn btn-sm btn-outline-primary">
+                      <i class="bi bi-eye"></i>
+                    </a>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+      {% else %}
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle me-2"></i>No results found for your search.
+        </div>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>
+{% endblock %} 

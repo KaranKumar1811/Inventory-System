@@ -1,0 +1,177 @@
+<div class="container mt-4">
+  <h1>Return Equipment</h1>
+  <div class="card">
+    <div class="card-header">
+      <h5>Return Uniform Item for {{ transaction.employee.name }}</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <p><strong>Item:</strong> {{ transaction.uniform.name }}</p>
+          <p><strong>Size:</strong> {{ transaction.size }}</p>
+          <p><strong>Quantity:</strong> {{ transaction.quantity }}</p>
+          <p><strong>Date Issued:</strong> {{ transaction.date_issued }}</p>
+          <p><strong>Total Returned So Far:</strong> {{ returned_quantity }}</p>
+          <p><strong>Remaining to Return:</strong> {{ remaining }}</p>
+        </div>
+      </div>
+
+      {% if messages %}
+      <div class="messages">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+          {{ message }}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <form method="post" class="mt-4">
+        {% csrf_token %}
+        <div class="form-group">
+          <label>Return all items?</label>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="all_returned" id="all_returned_yes" value="yes" checked>
+            <label class="form-check-label" for="all_returned_yes">
+              Yes, return all {{ remaining }} items
+            </label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="all_returned" id="all_returned_no" value="no">
+            <label class="form-check-label" for="all_returned_no">
+              No, I want to specify a quantity
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group returned-quantity-field" style="display: none;">
+          <label for="id_returned_quantity">Quantity to Return:</label>
+          <input type="number" name="returned_quantity" id="id_returned_quantity" class="form-control" min="1" max="{{ remaining }}">
+          {% if form.returned_quantity.errors %}
+          <div class="invalid-feedback d-block">
+            {{ form.returned_quantity.errors }}
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Damage fields -->
+        <div class="form-group mt-3">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="has_damaged_items" id="has_damaged_items">
+            <label class="form-check-label" for="has_damaged_items">
+              Some items are damaged/unusable
+            </label>
+          </div>
+        </div>
+
+        <div id="damage-fields" style="display: none;">
+          <div class="form-group mt-2">
+            <label for="damaged_quantity">Number of damaged items:</label>
+            <input type="number" name="damaged_quantity" id="damaged_quantity" class="form-control" min="1" max="{{ remaining }}">
+            {% if form.damaged_quantity.errors %}
+            <div class="invalid-feedback d-block">
+              {{ form.damaged_quantity.errors }}
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="form-group mt-2">
+            <label for="damage_type">Type of damage:</label>
+            <select name="damage_type" id="damage_type" class="form-control">
+              <option value="none">Select damage type</option>
+              <option value="wear">Normal wear and tear</option>
+              <option value="incident">Damaged in incident</option>
+              <option value="other">Other damage</option>
+            </select>
+            {% if form.damage_type.errors %}
+            <div class="invalid-feedback d-block">
+              {{ form.damage_type.errors }}
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="form-group mt-2">
+            <label for="damage_notes">Description of damage:</label>
+            <textarea name="damage_notes" id="damage_notes" class="form-control" rows="3"></textarea>
+            {% if form.damage_notes.errors %}
+            <div class="invalid-feedback d-block">
+              {{ form.damage_notes.errors }}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary mt-3">Process Return</button>
+        <a href="{% url 'inventory:employee_detail' transaction.employee.id %}" class="btn btn-secondary mt-3">Cancel</a>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Get radio buttons and quantity field
+    const radioButtons = document.querySelectorAll('input[name="all_returned"]');
+    const quantityField = document.querySelector('.returned-quantity-field');
+    
+    // Function to update quantity field visibility
+    function updateQuantityField() {
+      const checkedValue = document.querySelector('input[name="all_returned"]:checked')?.value;
+      if (checkedValue === 'yes') {
+        quantityField.style.display = 'none';
+      } else {
+        quantityField.style.display = 'block';
+      }
+    }
+    
+    // Initial state
+    updateQuantityField();
+    
+    // Add event listeners
+    radioButtons.forEach(function(radio) {
+      radio.addEventListener('change', updateQuantityField);
+    });
+    
+    // Damage fields visibility handling
+    const damagedCheckbox = document.getElementById('has_damaged_items');
+    const damageFields = document.getElementById('damage-fields');
+    
+    // Function to toggle damage fields visibility
+    function toggleDamageFields() {
+      if (damagedCheckbox.checked) {
+        damageFields.style.display = 'block';
+      } else {
+        damageFields.style.display = 'none';
+      }
+    }
+    
+    // Initial state
+    toggleDamageFields();
+    
+    // Add event listener
+    damagedCheckbox.addEventListener('change', toggleDamageFields);
+    
+    // Validate that damaged quantity doesn't exceed total returned quantity
+    const returnedQuantityInput = document.getElementById('id_returned_quantity');
+    const damagedQuantityInput = document.getElementById('damaged_quantity');
+    
+    function validateDamagedQuantity() {
+      const allReturned = document.getElementById('all_returned_yes').checked;
+      const returnedQty = allReturned ? parseInt('{{ remaining }}') : parseInt(returnedQuantityInput.value || '0');
+      const damagedQty = parseInt(damagedQuantityInput.value || '0');
+      
+      if (damagedQty > returnedQty) {
+        damagedQuantityInput.setCustomValidity('Damaged quantity cannot exceed returned quantity');
+      } else {
+        damagedQuantityInput.setCustomValidity('');
+      }
+    }
+    
+    returnedQuantityInput.addEventListener('input', validateDamagedQuantity);
+    damagedQuantityInput.addEventListener('input', validateDamagedQuantity);
+    document.getElementById('all_returned_yes').addEventListener('change', validateDamagedQuantity);
+    document.getElementById('all_returned_no').addEventListener('change', validateDamagedQuantity);
+  });
+</script>
+{% endblock %} 

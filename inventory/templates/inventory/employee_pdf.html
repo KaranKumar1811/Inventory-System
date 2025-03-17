@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Employee Uniform Details</title>
+    <style>
+        @page { 
+          size: A4 portrait;
+          margin: 0.5in;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            color: #333;
+            line-height: 1.4;
+            font-size: 12px;
+        }
+        .header {
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 15px;
+        }
+        .employee-info {
+            margin-bottom: 15px;
+            display: block;
+        }
+        .employee-info div {
+            margin-bottom: 5px;
+        }
+        .document-title {
+            text-align: center;
+            color: #3498db;
+            font-size: 22px;
+            margin-bottom: 20px;
+        }
+        h1 { 
+            color: #2c3e50; 
+            font-size: 20px;
+            margin-bottom: 5px;
+            margin-top: 0;
+        }
+        h2 { 
+            margin-top: 20px; 
+            color: #2c3e50; 
+            font-size: 16px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-bottom: 10px;
+            font-size: 11px;
+        }
+        table, th, td { 
+            border: none;
+            border-bottom: 1px solid #eee;
+        }
+        th { 
+            background-color: #212529; 
+            color: white; 
+            font-weight: bold;
+            text-align: left;
+            padding: 8px 10px;
+        }
+        td { 
+            padding: 8px 10px;
+            vertical-align: top;
+        }
+        .return-status {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .not-returned {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .partial-returned {
+            color: #f39c12;
+            font-weight: bold;
+        }
+        .return-list {
+            margin: 0;
+            padding: 0 0 0 20px;
+            font-size: 10px;
+            color: #666;
+            list-style-type: circle;
+        }
+        .return-list li {
+            margin: 0;
+            padding: 0;
+            line-height: 1.2;
+        }
+        .loaned-tag {
+            display: inline-block;
+            background-color: #f39c12;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            margin-left: 5px;
+        }
+        .check-icon {
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        /* Transaction info container */
+        .transaction-info {
+            margin: 10px 0 5px 0;
+            padding: 8px;
+            background-color: #f8f9fa;
+        }
+        .transaction-header-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .transaction-header-left,
+        .transaction-header-right {
+            color: #3498db;
+            font-weight: bold;
+            vertical-align: middle;
+            padding: 0;
+        }
+        .transaction-header-right {
+            text-align: right;
+        }
+
+        .account-summary {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #4a7acd;
+        }
+        .account-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        /* Table styles for account summary */
+        .summary-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-bottom: 20px;
+        }
+        .summary-table th {
+            background-color: #4a7acd;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            border: 1px solid #fff;
+        }
+        .summary-table td {
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #ddd;
+            background-color: #f8f9fa;
+        }
+        
+        .damaged-item {
+            color: #dc3545;
+            font-style: italic;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="document-title">Uniform Inventory System</div>
+    
+    <div class="header">
+        <h1>Uniform Details for {{ employee.first_name }} {{ employee.last_name }}</h1>
+    </div>
+    
+    <div class="employee-info">
+        <div><strong>Employee ID:</strong> {{ employee.employee_id }}</div>
+        <div><strong>Email:</strong> {{ employee.email }}</div>
+        <div><strong>Phone:</strong> {{ employee.phone }}</div>
+        {% if employee.department %}<div><strong>Department:</strong> {{ employee.department }}</div>{% endif %}
+    </div>
+    
+    {% if transactions %}
+    <h2>Transaction History</h2>
+    
+    {% for transaction in transactions %}
+    <div class="transaction-info">
+        <!-- Single row, 2 columns: left column has two lines, right column has date -->
+        <table class="transaction-header-table">
+            <tr>
+                <td class="transaction-header-left">
+                    Transaction #{{ transaction.id }}
+                    {% if transaction.payment_option != 'charge' or transaction.loaned %}
+                        <br />
+                        {% if transaction.payment_option != 'charge' %}
+                            {{ transaction.get_payment_option_display }}
+                        {% endif %}
+                        {% if transaction.payment_option != 'charge' and transaction.loaned %}
+                            - 
+                        {% endif %}
+                        {% if transaction.loaned %}
+                            <span class="loaned-tag">Loaned</span>
+                        {% endif %}
+                    {% endif %}
+                </td>
+                <td class="transaction-header-right">
+                    Date: {{ transaction.transaction_date|date:"M d, Y h:i a" }}
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    <table>
+        <tr>
+            <th>Uniform Name</th>
+            <th>Size</th>
+            <th>Price</th>
+            <th>Qty</th>
+            <th>Return Status</th>
+        </tr>
+        {% for item in transaction.items.all %}
+        <tr>
+            <td>{{ item.uniform.name }}</td>
+            <td>{{ item.uniform.size }}</td>
+            <td>${{ item.uniform.price }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>
+                {% if item.total_returned == item.quantity %}
+                <span class="return-status">Returned: {{ item.total_returned }}/{{ item.quantity }}</span>
+                <ul class="return-list">
+                    {% for record in item.itemreturnrecord_set.all %}
+                    <li>
+                        {{ record.returned_quantity }} on {{ record.return_date|date:"M d, Y" }}
+                        {% if record.damaged_quantity > 0 %}
+                        <span class="damaged-item">
+                            ({{ record.damaged_quantity }} damaged - {{ record.get_damage_type_display }})
+                        </span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% elif item.total_returned > 0 %}
+                <span class="partial-returned">Returned: {{ item.total_returned }}/{{ item.quantity }}</span>
+                <ul class="return-list">
+                    {% for record in item.itemreturnrecord_set.all %}
+                    <li>
+                        {{ record.returned_quantity }} on {{ record.return_date|date:"M d, Y" }}
+                        {% if record.damaged_quantity > 0 %}
+                        <span class="damaged-item">
+                            ({{ record.damaged_quantity }} damaged - {{ record.get_damage_type_display }})
+                        </span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <span class="not-returned">Not returned</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endfor %}
+    
+    <!-- Account Summary Section -->
+    <div class="account-summary">
+        <div class="account-title">Total Account Summary</div>
+        
+        <table class="summary-table">
+            <tr>
+                <th>Total Items</th>
+                <th>Items Returned</th>
+                <th>Items Outstanding</th>
+                <th>Total Value</th>
+                <th>Outstanding Value</th>
+            </tr>
+            <tr>
+                <td>{{ total_items }}</td>
+                <td>{{ returned_items }}</td>
+                <td>{{ outstanding_items }}</td>
+                <td>${{ total_value|floatformat:2 }}</td>
+                <td>${{ outstanding_value|floatformat:2 }}</td>
+            </tr>
+        </table>
+    </div>
+    
+    {% else %}
+    <p><strong>No uniform items assigned to this employee.</strong></p>
+    {% endif %}
+    
+    <div style="position: absolute; bottom: 20px; width: 100%; text-align: center; font-size: 9px; color: #777;">
+        Generated on {% now "F j, Y" %} • Uniform Inventory System • Page 1
+    </div>
+</body>
+</html>

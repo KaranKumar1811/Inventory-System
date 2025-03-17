@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit User Role{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">Edit Role for {{ user.username }}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Username:</strong> {{ user.username }}</p>
+                                <p><strong>Name:</strong> {{ user.get_full_name }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Email:</strong> {{ user.email }}</p>
+                                <p><strong>Last Login:</strong> {{ user.last_login|date:"M d, Y" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <h5>Select Role</h5>
+                            <hr>
+                            
+                            <div class="mb-3">
+                                {{ form.role.errors }}
+                                <div class="form-text mb-2">{{ form.role.help_text }}</div>
+                                
+                                {% for radio in form.role %}
+                                <div class="form-check mb-2">
+                                    {{ radio.tag }}
+                                    <label class="form-check-label" for="{{ radio.id_for_label }}">
+                                        {{ radio.choice_label }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'inventory:user_list' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> Back to Users
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg"></i> Update Role
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">About User Roles</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">The system has three predefined roles with different permission levels:</p>
+                    <ul class="list-group">
+                        <li class="list-group-item">
+                            <strong>Viewer</strong> - Can only view information but cannot make changes
+                        </li>
+                        <li class="list-group-item">
+                            <strong>Staff</strong> - Can manage inventory, employees, and transactions
+                        </li>
+                        <li class="list-group-item">
+                            <strong>Administrator</strong> - Has full access to all system features including user management
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

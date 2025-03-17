@@ -1,0 +1,19 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Process Return{% endblock %}
+
+{% block content %}
+<h1>Process Return for Transaction #{{ transaction.id }}</h1>
+<p>Uniform: {{ transaction.uniform.name }}<br>
+Quantity Originally Taken: {{ transaction.quantity }}</p>
+
+<form method="POST">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit" value="Submit Return" class="default">
+</form>
+
+<p><a href="{% url 'admin:inventory_transaction_changelist' %}">Cancel and go back</a></p>
+{% endblock %}
+

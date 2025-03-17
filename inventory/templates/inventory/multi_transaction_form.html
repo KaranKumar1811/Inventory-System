@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}New Multi-Item Transaction{% endblock %}
+
+{% block content %}
+<div class="card transaction-form">
+  <div class="card-header">
+    <h2 class="mb-0">
+      <i class="bi bi-plus-circle me-2"></i>New Multi-Item Transaction
+      {% if selected_employee %}
+      <small class="text-success">for {{ selected_employee.first_name }} {{ selected_employee.last_name }}</small>
+      {% endif %}
+    </h2>
+  </div>
+  <div class="card-body">
+    {% if selected_employee %}
+    <div class="alert alert-info mb-4">
+      <i class="bi bi-info-circle me-2"></i>
+      Creating a transaction for <strong>{{ selected_employee.first_name }} {{ selected_employee.last_name }}</strong> (ID: {{ selected_employee.employee_id }})
+    </div>
+    {% endif %}
+    
+    <form method="post">
+      {% csrf_token %}
+      
+      <h4 class="mb-3">Transaction Details</h4>
+      <div class="row g-3 mb-4">
+        {% for field in form %}
+        <div class="col-md-4">
+          <div class="form-group">
+            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+            {{ field.errors }}
+            <div class="form-control-wrapper">
+              {% if field.name == 'loaned' %}
+                <div class="form-check form-switch">
+                  <input type="checkbox" name="{{ field.name }}" id="{{ field.id_for_label }}" 
+                        class="form-check-input" role="switch" 
+                        {% if field.value %}checked{% endif %}>
+                  <span id="loaned-label" class="ms-2 form-check-label" 
+                       style="display: {% if field.value %}inline{% else %}none{% endif %};">
+                    Mark as loaned
+                  </span>
+                </div>
+              {% else %}
+                {{ field }}
+              {% endif %}
+            </div>
+            {% if field.help_text %}
+              <div class="form-text text-muted">
+                {{ field.help_text }}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      
+      <h4 class="mb-3">Uniform Items</h4>
+      <div class="card mb-4">
+        <div class="card-body">
+          {{ item_formset.management_form }}
+          
+          <div id="item-forms">
+            {% for item_form in item_formset %}
+            <div class="item-form mb-3 p-3 rounded {% if not forloop.first %}mt-3{% endif %}" id="item-{{ forloop.counter0 }}" style="background-color: #ffffff !important;">
+              <div class="row g-3">
+                <div class="col-md-5">
+                  <label for="{{ item_form.uniform.id_for_label }}" class="form-label">Uniform</label>
+                  {{ item_form.uniform.errors }}
+                  {{ item_form.uniform }}
+                </div>
+                <div class="col-md-3">
+                  <label for="{{ item_form.quantity.id_for_label }}" class="form-label">Quantity</label>
+                  {{ item_form.quantity.errors }}
+                  {{ item_form.quantity }}
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                  {% if item_form.instance.pk %}{{ item_form.DELETE }}{% endif %}
+                  <button type="button" class="btn btn-danger remove-form"{% if forloop.first and item_formset|length == 1 %} style="display:none"{% endif %}>
+                    <i class="bi bi-trash"></i> Remove
+                  </button>
+                </div>
+              </div>
+              
+              {% for field in item_form.hidden_fields %}
+              {{ field }}
+              {% endfor %}
+            </div>
+            {% endfor %}
+          </div>
+          
+          <button type="button" id="add-item" class="btn btn-primary mt-2">
+            <i class="bi bi-plus-circle"></i> Add Another Item
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-check-circle me-1"></i>Create Transaction
+        </button>
+        <a href="{% url 'inventory:employee_list' %}" class="btn btn-secondary">
+          <i class="bi bi-x-circle me-1"></i>Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .errorlist {
+    color: #dc3545;
+    list-style: none;
+    padding: 0;
+    margin: 0.25rem 0;
+    font-size: 0.875rem;
+  }
+  .form-control-wrapper select,
+  .form-control-wrapper input:not([type="checkbox"]) {
+    display: block;
+    width: 100%;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #212529;
+    background-color: #fff;
+    background-clip: padding-box;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+  }
+  .item-form {
+    position: relative;
+    background-color: #ffffff !important; /* Force white background */
+    border: 1px solid #dee2e6 !important; /* Add border explicitly */
+  }
+  .card-body, .card {
+    background-color: #ffffff !important;
+  }
+  .remove-form {
+    margin-left: auto;
+  }
+  /* Switch toggle styling */
+  .form-check.form-switch {
+    display: flex;
+    align-items: center;
+  }
+  .form-check-input[type="checkbox"] {
+    height: 1.5rem !important;
+    width: 3rem !important;
+    margin-top: 0 !important;
+    cursor: pointer;
+  }
+  .form-check-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    cursor: pointer;
+  }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const addButton = document.getElementById('add-item');
+    const formsContainer = document.getElementById('item-forms');
+    const totalFormsInput = document.getElementById('id_items-TOTAL_FORMS');
+    
+    // Add new form when Add button is clicked
+    addButton.addEventListener('click', function() {
+      const formCount = parseInt(totalFormsInput.value);
+      const newForm = formsContainer.querySelector('.item-form').cloneNode(true);
+      
+      // Update form IDs and attributes
+      newForm.id = `item-${formCount}`;
+      
+      // Process all inputs and selects in the new form
+      newForm.querySelectorAll('input, select').forEach(input => {
+        if (input.id) {
+          // Update ID and name attributes with new index
+          const newId = input.id.replace(/items-\d+/, `items-${formCount}`);
+          input.id = newId;
+          input.name = input.name.replace(/items-\d+/, `items-${formCount}`);
+          
+          // Clear values for the new form
+          if (input.tagName === 'SELECT') {
+            // Reset select dropdown to first option
+            if (input.options.length > 0) {
+              input.selectedIndex = 0;
+            }
+          } else if (input.tagName === 'INPUT') {
+            // Clear text/number inputs
+            if (input.type === 'text' || input.type === 'number') {
+              input.value = '';
+            } 
+            // Handle hidden inputs but preserve their default values if any
+            else if (input.type !== 'hidden') {
+              input.value = '';
+            }
+          }
+        }
+      });
+      
+      // Update labels for the new form
+      newForm.querySelectorAll('label').forEach(label => {
+        if (label.htmlFor) {
+          label.htmlFor = label.htmlFor.replace(/items-\d+/, `items-${formCount}`);
+        }
+      });
+      
+      // Show remove button on all forms
+      const removeButtons = document.querySelectorAll('.remove-form');
+      removeButtons.forEach(btn => btn.style.display = 'block');
+      newForm.querySelector('.remove-form').style.display = 'block';
+      
+      // Increment total forms count
+      totalFormsInput.value = formCount + 1;
+      
+      // Add the new form to the container
+      formsContainer.appendChild(newForm);
+    });
+    
+    // Handle remove button clicks
+    formsContainer.addEventListener('click', function(e) {
+      if (e.target.closest('.remove-form')) {
+        const formCount = parseInt(totalFormsInput.value);
+        if (formCount > 1) {
+          const itemForm = e.target.closest('.item-form');
+          itemForm.remove();
+          
+          // Update total forms count
+          totalFormsInput.value = formCount - 1;
+          
+          // If only one form is left, hide its remove button
+          const remainingForms = document.querySelectorAll('.item-form');
+          if (remainingForms.length === 1) {
+            remainingForms[0].querySelector('.remove-form').style.display = 'none';
+          }
+        }
+      }
+    });
+
+    // Toggle switch functionality for loaned checkbox
+    const loanedCheckbox = document.querySelector('input[name="loaned"]');
+    const loanedLabel = document.getElementById('loaned-label');
+    
+    if (loanedCheckbox && loanedLabel) {
+      // Update label on change
+      loanedCheckbox.addEventListener('change', function() {
+        loanedLabel.style.display = this.checked ? 'inline' : 'none';
+      });
+    }
+  });
+</script>
+{% endblock %} 
