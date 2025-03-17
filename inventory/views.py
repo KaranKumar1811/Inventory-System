@@ -17,6 +17,9 @@ import datetime
 from django.contrib.auth.models import User
 import pandas as pd
 from django.db import transaction, IntegrityError
+import os
+from django.conf import settings
+import base64
 
 # --- Search View ---
 class SearchView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
@@ -360,6 +363,11 @@ def employee_pdf(request, pk):
             outstanding = item_quantity - returned
             outstanding_value += outstanding * item.uniform.price
     
+    # Get the logo as base64
+    logo_path = os.path.join(settings.BASE_DIR, 'inventory/static/inventory/images/Round_logo.png')
+    with open(logo_path, 'rb') as img_file:
+        logo_data = base64.b64encode(img_file.read()).decode('utf-8')
+    
     context = {
         'employee': employee,
         'transactions': transactions,
@@ -368,7 +376,8 @@ def employee_pdf(request, pk):
         'returned_items': total_returned,
         'outstanding_items': total_items - total_returned,
         'total_value': total_value,
-        'outstanding_value': outstanding_value
+        'outstanding_value': outstanding_value,
+        'logo_data': logo_data
     }
     
     template = get_template('inventory/employee_pdf.html')

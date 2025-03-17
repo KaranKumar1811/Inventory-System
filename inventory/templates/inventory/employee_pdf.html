@@ -18,6 +18,24 @@
             padding-bottom: 10px;
             border-bottom: 1px solid #ddd;
             margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .logo-container {
+            text-align: center;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .logo {
+            height: 80px;
+            margin-right: 15px;
+        }
+        .title-container {
+            display: inline-block;
+            vertical-align: middle;
         }
         .employee-info {
             margin-bottom: 15px;
@@ -29,8 +47,9 @@
         .document-title {
             text-align: center;
             color: #3498db;
-            font-size: 22px;
-            margin-bottom: 20px;
+            font-size: 24px;
+            margin-bottom: 5px;
+            font-weight: bold;
         }
         h1 { 
             color: #2c3e50; 
@@ -167,7 +186,12 @@
     </style>
 </head>
 <body>
-    <div class="document-title">Uniform Inventory System</div>
+    <div class="logo-container">
+        <img src="data:image/png;base64,{{ logo_data }}" alt="Company Logo" class="logo">
+        <div class="title-container">
+            <div class="document-title">Uniform Inventory System</div>
+        </div>
+    </div>
     
     <div class="header">
         <h1>Uniform Details for {{ employee.first_name }} {{ employee.last_name }}</h1>
