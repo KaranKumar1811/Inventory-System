@@ -21,6 +21,11 @@ from .views import (
     # EmployeeDeleteView,
     # UniformDeleteView,
     damaged_items_report,
+    # Import/Export views
+    import_employees,
+    import_uniforms,
+    export_employee_template,
+    export_uniform_template,
 )
 
 app_name = 'inventory'
@@ -64,6 +69,12 @@ urlpatterns = [
     path('transaction/new/', MultiItemTransactionCreateView.as_view(), name='transaction_create'),
     path('transaction-item/<int:pk>/return/', process_item_return, name='item_return'),
     path('damaged-items/', damaged_items_report, name='damaged_items_report'),
+    
+    # Import/Export Routes
+    path('employees/import/', import_employees, name='import_employees'),
+    path('employees/template/', export_employee_template, name='export_employee_template'),
+    path('uniforms/import/', import_uniforms, name='import_uniforms'),
+    path('uniforms/template/', export_uniform_template, name='export_uniform_template'),
 ]
 
 

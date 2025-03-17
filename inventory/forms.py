@@ -5,6 +5,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User, Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
+from django.core.validators import FileExtensionValidator
 
 class SearchForm(forms.Form):
     query = forms.CharField(
@@ -252,3 +253,20 @@ class UserRoleForm(forms.Form):
         # Assign permissions to user
         for perm in inventory_permissions:
             user.user_permissions.add(perm)
+
+class ImportFileForm(forms.Form):
+    """Form for uploading Excel files to import data."""
+    file = forms.FileField(
+        label='Select Excel File',
+        help_text='Only Excel files (.xlsx, .xls) are supported',
+        validators=[
+            FileExtensionValidator(allowed_extensions=['xlsx', 'xls'])
+        ]
+    )
+    
+    def clean_file(self):
+        file = self.cleaned_data.get('file')
+        if file:
+            if not file.name.endswith(('.xlsx', '.xls')):
+                raise forms.ValidationError('Unsupported file format. Please upload an Excel file (.xlsx, .xls).')
+        return file

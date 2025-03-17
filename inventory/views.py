@@ -9,12 +9,14 @@ import io
 from xhtml2pdf import pisa
 from django.utils import timezone
 from django.db.models import Sum, Count, Q, F
-from .forms import ReturnTransactionForm, MultiItemTransactionForm, TransactionItemFormSet, SearchForm, CustomUserCreationForm, UserRoleForm
+from .forms import ReturnTransactionForm, MultiItemTransactionForm, TransactionItemFormSet, SearchForm, CustomUserCreationForm, UserRoleForm, ImportFileForm
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.generic.edit import FormView, UpdateView
 import datetime
 from django.contrib.auth.models import User
+import pandas as pd
+from django.db import transaction, IntegrityError
 
 # --- Search View ---
 class SearchView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
@@ -717,3 +719,221 @@ def damaged_items_report(request):
     }
     
     return render(request, 'inventory/damaged_items_report.html', context)
+
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def import_employees(request):
+    """View to handle importing employees from Excel file."""
+    if request.method == 'POST':
+        form = ImportFileForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                # Process the Excel file
+                excel_file = request.FILES['file']
+                df = pd.read_excel(excel_file)
+                
+                # Validate required columns
+                required_columns = ['employee_id', 'first_name', 'last_name']
+                for column in required_columns:
+                    if column not in df.columns:
+                        messages.error(request, f"Missing required column: {column}")
+                        return redirect('inventory:import_employees')
+                
+                # Track results
+                success_count = 0
+                error_count = 0
+                errors = []
+                
+                # Process each row in the dataframe
+                with transaction.atomic():
+                    for index, row in df.iterrows():
+                        try:
+                            # Extract data from the row
+                            employee_data = {
+                                'employee_id': str(row['employee_id']).strip(),
+                                'first_name': str(row['first_name']).strip(),
+                                'last_name': str(row['last_name']).strip(),
+                                'email': str(row.get('email', '')).strip() if pd.notna(row.get('email', '')) else None,
+                                'phone': str(row.get('phone', '')).strip() if pd.notna(row.get('phone', '')) else None
+                            }
+                            
+                            # Skip blank rows
+                            if not employee_data['employee_id'] or not employee_data['first_name'] or not employee_data['last_name']:
+                                continue
+                            
+                            # Check if employee already exists
+                            employee, created = Employee.objects.update_or_create(
+                                employee_id=employee_data['employee_id'],
+                                defaults={
+                                    'first_name': employee_data['first_name'],
+                                    'last_name': employee_data['last_name'],
+                                    'email': employee_data['email'],
+                                    'phone': employee_data['phone']
+                                }
+                            )
+                            
+                            if created:
+                                success_count += 1
+                            else:
+                                # Updated existing employee
+                                success_count += 1
+                                
+                        except Exception as e:
+                            error_count += 1
+                            errors.append(f"Row {index+2}: {str(e)}")
+                
+                # Report results
+                if success_count > 0:
+                    messages.success(request, f"Successfully imported {success_count} employees.")
+                if error_count > 0:
+                    messages.warning(request, f"Encountered {error_count} errors during import.")
+                    for error in errors[:10]:  # Show first 10 errors
+                        messages.error(request, error)
+                    if len(errors) > 10:
+                        messages.error(request, f"... and {len(errors) - 10} more errors.")
+                
+                return redirect('inventory:employee_list')
+            
+            except Exception as e:
+                messages.error(request, f"Error processing file: {str(e)}")
+    else:
+        form = ImportFileForm()
+    
+    return render(request, 'inventory/import_employees.html', {'form': form})
+
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def import_uniforms(request):
+    """View to handle importing uniforms from Excel file."""
+    if request.method == 'POST':
+        form = ImportFileForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                # Process the Excel file
+                excel_file = request.FILES['file']
+                df = pd.read_excel(excel_file)
+                
+                # Validate required columns
+                required_columns = ['name', 'size', 'price', 'stock_quantity']
+                for column in required_columns:
+                    if column not in df.columns:
+                        messages.error(request, f"Missing required column: {column}")
+                        return redirect('inventory:import_uniforms')
+                
+                # Track results
+                success_count = 0
+                error_count = 0
+                errors = []
+                
+                # Process each row in the dataframe
+                with transaction.atomic():
+                    for index, row in df.iterrows():
+                        try:
+                            # Extract data from the row
+                            name = str(row['name']).strip()
+                            size = str(row['size']).strip()
+                            
+                            # Skip blank rows
+                            if not name or not size:
+                                continue
+                            
+                            # Convert price and quantities to correct types
+                            try:
+                                price = float(row['price'])
+                                stock_quantity = int(row['stock_quantity']) if pd.notna(row['stock_quantity']) else 0
+                                damaged_quantity = int(row.get('damaged_quantity', 0)) if pd.notna(row.get('damaged_quantity', 0)) else 0
+                            except ValueError:
+                                error_count += 1
+                                errors.append(f"Row {index+2}: Invalid numeric values")
+                                continue
+                            
+                            # Check if uniform already exists
+                            uniform, created = Uniform.objects.update_or_create(
+                                name=name,
+                                size=size,
+                                defaults={
+                                    'price': price,
+                                    'stock_quantity': stock_quantity,
+                                    'damaged_quantity': damaged_quantity
+                                }
+                            )
+                            
+                            if created:
+                                success_count += 1
+                            else:
+                                # Updated existing uniform
+                                success_count += 1
+                                
+                        except IntegrityError:
+                            error_count += 1
+                            errors.append(f"Row {index+2}: Duplicate entry for {name} - {size}")
+                        except Exception as e:
+                            error_count += 1
+                            errors.append(f"Row {index+2}: {str(e)}")
+                
+                # Report results
+                if success_count > 0:
+                    messages.success(request, f"Successfully imported {success_count} uniforms.")
+                if error_count > 0:
+                    messages.warning(request, f"Encountered {error_count} errors during import.")
+                    for error in errors[:10]:  # Show first 10 errors
+                        messages.error(request, error)
+                    if len(errors) > 10:
+                        messages.error(request, f"... and {len(errors) - 10} more errors.")
+                
+                return redirect('inventory:uniform_list')
+            
+            except Exception as e:
+                messages.error(request, f"Error processing file: {str(e)}")
+    else:
+        form = ImportFileForm()
+    
+    return render(request, 'inventory/import_uniforms.html', {'form': form})
+
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def export_employee_template(request):
+    """Generate a template Excel file for employee imports."""
+    # Create a DataFrame with the column headers
+    df = pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone'])
+    
+    # Add sample data
+    sample_data = [
+        {'employee_id': 'EMP001', 'first_name': 'John', 'last_name': 'Doe', 'email': 'john.doe@example.com', 'phone': '555-123-4567'},
+        {'employee_id': 'EMP002', 'first_name': 'Jane', 'last_name': 'Smith', 'email': 'jane.smith@example.com', 'phone': '555-987-6543'}
+    ]
+    df = pd.concat([df, pd.DataFrame(sample_data)], ignore_index=True)
+    
+    # Create a response with the Excel file
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=employee_import_template.xlsx'
+    
+    # Write the DataFrame to the response
+    with pd.ExcelWriter(response, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Employees')
+    
+    return response
+
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def export_uniform_template(request):
+    """Generate a template Excel file for uniform imports."""
+    # Create a DataFrame with the column headers
+    df = pd.DataFrame(columns=['name', 'size', 'price', 'stock_quantity', 'damaged_quantity'])
+    
+    # Add sample data
+    sample_data = [
+        {'name': 'Shirt', 'size': 'M', 'price': 25.99, 'stock_quantity': 50, 'damaged_quantity': 0},
+        {'name': 'Pants', 'size': 'L', 'price': 35.50, 'stock_quantity': 30, 'damaged_quantity': 2}
+    ]
+    df = pd.concat([df, pd.DataFrame(sample_data)], ignore_index=True)
+    
+    # Create a response with the Excel file
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=uniform_import_template.xlsx'
+    
+    # Write the DataFrame to the response
+    with pd.ExcelWriter(response, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Uniforms')
+    
+    return response
