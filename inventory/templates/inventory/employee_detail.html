@@ -2,26 +2,61 @@
 
 {% block title %}Employee Detail{% endblock %}
 
+{% block extra_css %}
+<style>
+  .archived-badge {
+    font-size: 0.85rem;
+    background-color: #6c757d;
+    padding: 0.25em 0.7em;
+    border-radius: 0.25rem;
+    display: inline-block;
+    margin-left: 10px;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
     <h2 class="mb-0">
       <i class="bi bi-person me-2"></i>{{ employee.first_name }} {{ employee.last_name }}
       <small class="text-muted ms-2">(ID: {{ employee.employee_id }})</small>
+      {% if employee.is_archived %}
+      <span class="archived-badge text-white">
+        <i class="bi bi-archive-fill me-1"></i>Archived
+      </span>
+      {% endif %}
     </h2>
     <div class="btn-group">
+      {% if not employee.is_archived %}
       <a href="{% url 'inventory:transaction_create' %}?employee_id={{ employee.pk }}" class="btn btn-success">
         <i class="bi bi-plus-circle me-1"></i>Create Transaction
       </a>
+      {% endif %}
       <a href="{% url 'inventory:employee_pdf' employee.pk %}" class="btn btn-outline-primary" target="_blank">
         <i class="bi bi-file-pdf me-1"></i>Download PDF
       </a>
       <a href="{% url 'admin:inventory_employee_change' employee.pk %}" class="btn btn-outline-primary" target="_blank">
         <i class="bi bi-pencil me-1"></i>Edit (Admin)
       </a>
+      <a href="{% url 'inventory:toggle_employee_archive' employee.pk %}" 
+         class="btn {% if employee.is_archived %}btn-outline-success{% else %}btn-outline-warning{% endif %}">
+        {% if employee.is_archived %}
+        <i class="bi bi-arrow-counterclockwise me-1"></i>Restore
+        {% else %}
+        <i class="bi bi-archive me-1"></i>Archive
+        {% endif %}
+      </a>
     </div>
   </div>
   <div class="card-body">
+    {% if employee.is_archived %}
+    <div class="alert alert-secondary mb-4">
+      <i class="bi bi-info-circle-fill me-2"></i>
+      This employee was archived on <strong>{{ employee.archive_date|date:"F j, Y" }}</strong>. 
+      Records are preserved for reference, but no new transactions can be created.
+    </div>
+    {% endif %}
     <div class="row mb-4">
       <div class="col-md-6">
         <div class="card h-100">

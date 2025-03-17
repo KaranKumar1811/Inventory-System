@@ -26,6 +26,8 @@ from .views import (
     import_uniforms,
     export_employee_template,
     export_uniform_template,
+    # Employee archiving
+    toggle_employee_archive,
 )
 
 app_name = 'inventory'
@@ -53,6 +55,7 @@ urlpatterns = [
     path('employees/', EmployeeListView.as_view(), name='employee_list'),
     path('employees/<int:pk>/', EmployeeDetailView.as_view(), name='employee_detail'),
     path('employees/<int:pk>/pdf/', employee_pdf, name='employee_pdf'),
+    path('employees/<int:pk>/archive/', toggle_employee_archive, name='toggle_employee_archive'),
     
     # Uncomment these when you implement the views
     # path('employees/add/', EmployeeCreateView.as_view(), name='employee_add'),

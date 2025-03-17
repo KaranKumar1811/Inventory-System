@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Employee List{% endblock %}
+{% block title %}{% if show_archived %}Archived Employees{% else %}Active Employees{% endif %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -54,26 +54,64 @@
   .sortable.asc, .sortable.desc {
     border-bottom: 2px solid #0d9fff;
   }
+  
+  /* Styling for archived indicators */
+  .archived-badge {
+    font-size: 0.75rem;
+    background-color: #6c757d;
+    padding: 0.25em 0.5em;
+    border-radius: 0.25rem;
+  }
+  
+  .archived-item {
+    opacity: 0.7;
+  }
+  
+  .archive-toggle-btn {
+    position: relative;
+    padding-left: 2.5rem;
+  }
+  
+  .archive-toggle-btn i {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+  }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
-    <h2 class="mb-0">Employees</h2>
-    <div>
+    <h2 class="mb-0">
+      {% if show_archived %}
+      <i class="bi bi-archive me-2"></i>Archived Employees
+      {% else %}
+      <i class="bi bi-person me-2"></i>Active Employees
+      {% endif %}
+    </h2>
+    <div class="d-flex align-items-center">
+      <!-- Toggle between active and archived employees -->
+      <a href="{% url 'inventory:employee_list' %}{% if show_archived %}{% else %}?show_archived=true{% endif %}" 
+         class="btn {% if show_archived %}btn-outline-primary{% else %}btn-outline-secondary{% endif %} me-3 archive-toggle-btn">
+        <i class="bi {% if show_archived %}bi-person{% else %}bi-archive{% endif %}"></i>
+        {% if show_archived %}
+        Show Active Employees
+        {% else %}
+        Show Archived Employees
+        {% endif %}
+      </a>
+      
+      <!-- Only show import/add buttons on active employee view -->
+      {% if not show_archived %}
       <a href="{% url 'inventory:import_employees' %}" class="btn btn-success me-2">
         <i class="bi bi-file-earmark-excel me-1"></i>Import from Excel
       </a>
-      <!-- Comment out the add button until the view is implemented -->
-      <!--
-      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
-        <i class="bi bi-person-plus me-1"></i>Add New Employee
-      </button>
-      -->
       <a href="{% url 'admin:inventory_employee_add' %}" class="btn btn-primary" target="_blank">
         <i class="bi bi-person-plus me-1"></i>Add New Employee (Admin)
       </a>
+      {% endif %}
     </div>
   </div>
   <div class="card-body">
@@ -89,16 +127,22 @@
             </th>
             <th>Email</th>
             <th>Phone</th>
+            {% if show_archived %}
+            <th>Archive Date</th>
+            {% endif %}
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           {% for employee in employees %}
-          <tr>
+          <tr{% if employee.is_archived %} class="archived-item"{% endif %}>
             <td>{{ employee.employee_id }}</td>
             <td>
               <a href="{% url 'inventory:employee_detail' employee.pk %}" class="text-decoration-none">
                 <i class="bi bi-person me-1"></i>{{ employee.first_name }} {{ employee.last_name }}
+                {% if employee.is_archived %}
+                <span class="archived-badge text-white">Archived</span>
+                {% endif %}
               </a>
             </td>
             <td>
@@ -115,6 +159,11 @@
                 <span class="text-muted">Not provided</span>
               {% endif %}
             </td>
+            {% if show_archived %}
+            <td>
+              {{ employee.archive_date|date:"M d, Y" }}
+            </td>
+            {% endif %}
             <td>
               <div class="btn-group" role="group">
                 <a href="{% url 'inventory:employee_detail' employee.pk %}" class="btn btn-sm btn-outline-info">
@@ -123,15 +172,21 @@
                 <a href="{% url 'admin:inventory_employee_change' employee.pk %}" class="btn btn-sm btn-outline-primary" target="_blank">
                   <i class="bi bi-pencil"></i>
                 </a>
-                <a href="{% url 'admin:inventory_employee_delete' employee.pk %}" class="btn btn-sm btn-outline-danger" target="_blank">
-                  <i class="bi bi-trash"></i>
+                <a href="{% url 'inventory:toggle_employee_archive' employee.pk %}" class="btn btn-sm {% if employee.is_archived %}btn-outline-success{% else %}btn-outline-warning{% endif %}">
+                  <i class="bi {% if employee.is_archived %}bi-arrow-counterclockwise{% else %}bi-archive{% endif %}"></i>
                 </a>
               </div>
             </td>
           </tr>
           {% empty %}
           <tr>
-            <td colspan="4" class="text-center">No employees found.</td>
+            <td colspan="{% if show_archived %}6{% else %}5{% endif %}" class="text-center">
+              {% if show_archived %}
+              No archived employees found.
+              {% else %}
+              No active employees found.
+              {% endif %}
+            </td>
           </tr>
           {% endfor %}
         </tbody>

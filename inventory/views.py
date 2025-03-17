@@ -161,7 +161,7 @@ class LoadingPageView(TemplateView):
     def get(self, request, *args, **kwargs):
         # Check if user is authenticated for AJAX requests
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            redirect_url = reverse_lazy('inventory:dashboard') if request.user.is_authenticated else reverse_lazy('login')
+            redirect_url = reverse_lazy('inventory:dashboard') if request.user.is_authenticated else reverse_lazy('inventory:login')
             return JsonResponse({'redirect': str(redirect_url)})
         return super().get(request, *args, **kwargs)
 
@@ -174,6 +174,23 @@ class EmployeeListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     
     def test_func(self):
         return self.request.user.is_staff or self.request.user.is_superuser
+    
+    def get_queryset(self):
+        # Check if we should show archived employees
+        show_archived = self.request.GET.get('show_archived', 'false').lower() == 'true'
+        
+        # Filter employees based on archive status
+        if show_archived:
+            return Employee.objects.filter(is_archived=True)
+        else:
+            return Employee.objects.filter(is_archived=False)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Pass the current filter status to the template
+        show_archived = self.request.GET.get('show_archived', 'false').lower() == 'true'
+        context['show_archived'] = show_archived
+        return context
 
 class EmployeeDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
     model = Employee
@@ -215,7 +232,7 @@ class TransactionCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView)
     model = Transaction
     fields = ['employee', 'uniform', 'quantity', 'payment_option', 'loaned']
     template_name = 'inventory/transaction_form.html'
-    success_url = reverse_lazy('employee_list')
+    success_url = reverse_lazy('inventory:employee_list')
     
     def test_func(self):
         return self.request.user.is_staff or self.request.user.is_superuser
@@ -223,7 +240,7 @@ class TransactionCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView)
 class MultiItemTransactionCreateView(LoginRequiredMixin, UserPassesTestMixin, FormView):
     form_class = MultiItemTransactionForm
     template_name = 'inventory/multi_transaction_form.html'
-    success_url = reverse_lazy('employee_list')
+    success_url = reverse_lazy('inventory:employee_list')
     
     def test_func(self):
         return self.request.user.is_staff or self.request.user.is_superuser
@@ -232,7 +249,7 @@ class MultiItemTransactionCreateView(LoginRequiredMixin, UserPassesTestMixin, Fo
         # If an employee_id was provided, redirect back to that employee's detail page
         employee_id = self.request.GET.get('employee_id')
         if employee_id:
-            return reverse_lazy('employee_detail', kwargs={'pk': employee_id})
+            return reverse_lazy('inventory:employee_detail', kwargs={'pk': employee_id})
         return self.success_url
     
     def get_initial(self):
@@ -576,7 +593,7 @@ class UserCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     model = User
     form_class = CustomUserCreationForm
     template_name = 'inventory/user_form.html'
-    success_url = reverse_lazy('user_list')
+    success_url = reverse_lazy('inventory:user_list')
     
     def test_func(self):
         return self.request.user.is_superuser
@@ -937,3 +954,35 @@ def export_uniform_template(request):
         df.to_excel(writer, index=False, sheet_name='Uniforms')
     
     return response
+
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def toggle_employee_archive(request, pk):
+    """Archive or unarchive an employee."""
+    employee = get_object_or_404(Employee, pk=pk)
+    
+    if request.method == 'POST':
+        # Toggle archive status
+        if employee.is_archived:
+            # Unarchive
+            employee.is_archived = False
+            employee.archive_date = None
+            messages.success(request, f"{employee.first_name} {employee.last_name} has been restored to active status.")
+        else:
+            # Archive
+            employee.is_archived = True
+            employee.archive_date = timezone.now()
+            messages.success(request, f"{employee.first_name} {employee.last_name} has been archived.")
+        
+        employee.save()
+        
+        # Redirect to referer or employee list
+        referer = request.META.get('HTTP_REFERER')
+        if referer:
+            return redirect(referer)
+        return redirect('inventory:employee_list')
+        
+    # If not POST, show confirmation page
+    return render(request, 'inventory/employee_archive_confirm.html', {
+        'employee': employee
+    })

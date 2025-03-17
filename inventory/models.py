@@ -10,6 +10,8 @@ class Employee(models.Model):
     last_name = models.CharField(max_length=100)
     email = models.EmailField(blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
+    is_archived = models.BooleanField(default=False, help_text="Whether this employee has been archived")
+    archive_date = models.DateTimeField(blank=True, null=True, help_text="When this employee was archived")
     
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.employee_id})"
