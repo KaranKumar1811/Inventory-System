@@ -16,5 +16,5 @@ whitenoise==6.6.0  # For serving static files securely
 gunicorn==21.2.0  # WSGI HTTP Server for UNIX
 dj-static==0.0.6  # Serve static files with gunicorn
 
-# Optional production database
-# psycopg2-binary==2.9.9  # PostgreSQL adapter
+# Production database
+psycopg2-binary==2.9.9  # PostgreSQL adapter
