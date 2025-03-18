@@ -16,4 +16,14 @@ def div(value, arg):
     try:
         return float(value) / float(arg)
     except (ValueError, TypeError, ZeroDivisionError):
-        return 0 
+        return 0
+
+@register.filter
+def add_class(field, css_class):
+    """Add a CSS class to a Django form field"""
+    attrs = field.field.widget.attrs
+    if 'class' in attrs:
+        attrs['class'] += f" {css_class}"
+    else:
+        attrs['class'] = css_class
+    return field 
