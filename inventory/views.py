@@ -995,3 +995,16 @@ def toggle_employee_archive(request, pk):
     return render(request, 'inventory/employee_archive_confirm.html', {
         'employee': employee
     })
+
+@login_required
+def uniform_stock_api(request, uniform_id):
+    """API endpoint to get the stock quantity of a uniform."""
+    try:
+        uniform = Uniform.objects.get(pk=uniform_id)
+        return JsonResponse({
+            'stock_quantity': uniform.stock_quantity,
+            'usable_quantity': uniform.usable_quantity,
+            'damaged_quantity': uniform.damaged_quantity
+        })
+    except Uniform.DoesNotExist:
+        return JsonResponse({'error': 'Uniform not found'}, status=404)

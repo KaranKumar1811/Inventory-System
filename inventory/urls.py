@@ -28,6 +28,7 @@ from .views import (
     export_uniform_template,
     # Employee archiving
     toggle_employee_archive,
+    uniform_stock_api,
 )
 from django.views.generic import TemplateView
 
@@ -80,6 +81,9 @@ urlpatterns = [
     path('employees/template/', export_employee_template, name='export_employee_template'),
     path('uniforms/import/', import_uniforms, name='import_uniforms'),
     path('uniforms/template/', export_uniform_template, name='export_uniform_template'),
+    
+    # Add a new URL pattern for the uniform stock API
+    path('api/uniform/<int:uniform_id>/stock/', uniform_stock_api, name='uniform_stock_api'),
 ]
 
 

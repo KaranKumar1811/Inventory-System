@@ -135,8 +135,8 @@
   }
   .item-form {
     position: relative;
-    background-color: #ffffff !important; /* Force white background */
-    border: 1px solid #dee2e6 !important; /* Add border explicitly */
+    background-color: #ffffff !important;
+    border: 1px solid #dee2e6 !important;
   }
   .card-body, .card {
     background-color: #ffffff !important;
@@ -144,7 +144,6 @@
   .remove-form {
     margin-left: auto;
   }
-  /* Switch toggle styling */
   .form-check.form-switch {
     display: flex;
     align-items: center;
@@ -160,6 +159,15 @@
     color: #6c757d;
     cursor: pointer;
   }
+  .stock-info {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: #6c757d;
+  }
+  .stock-info.low-stock {
+    color: #dc3545;
+    font-weight: bold;
+  }
 </style>
 {% endblock %}
 
@@ -169,6 +177,102 @@
     const addButton = document.getElementById('add-item');
     const formsContainer = document.getElementById('item-forms');
     const totalFormsInput = document.getElementById('id_items-TOTAL_FORMS');
+    
+    // Track selected uniforms to prevent duplicates
+    let selectedUniforms = new Set();
+    
+    // Initialize selected uniforms from existing forms
+    document.querySelectorAll('.item-form select[id$="-uniform"]').forEach(select => {
+      if (select.value) {
+        selectedUniforms.add(select.value);
+      }
+    });
+    
+    // Handle uniform selection change
+    function handleUniformChange(select) {
+      const formRow = select.closest('.item-form');
+      const stockInfoDiv = formRow.querySelector('.stock-info');
+      const previousValue = select.getAttribute('data-previous-value');
+      
+      // Remove previous value from selected set
+      if (previousValue) {
+        selectedUniforms.delete(previousValue);
+      }
+      
+      // If there's a stock info div from a previous selection, remove it
+      if (stockInfoDiv) {
+        stockInfoDiv.remove();
+      }
+      
+      // If a uniform is selected
+      if (select.value) {
+        // Check if this uniform is already selected in another form
+        if (selectedUniforms.has(select.value)) {
+          alert('This item is already selected in this transaction. Please choose a different item.');
+          select.value = previousValue || ''; // Reset to previous value or empty
+          return;
+        }
+        
+        // Add to selected set
+        selectedUniforms.add(select.value);
+        select.setAttribute('data-previous-value', select.value);
+        
+        // Create stock info element
+        const selectedOption = select.options[select.selectedIndex];
+        if (selectedOption) {
+          // Fetch stock quantity for the selected uniform
+          fetch(`/inventory/api/uniform/${select.value}/stock/`)
+            .then(response => response.json())
+            .then(data => {
+              const stockDiv = document.createElement('div');
+              stockDiv.className = 'stock-info';
+              
+              if (data.stock_quantity <= 5) {
+                stockDiv.classList.add('low-stock');
+              }
+              
+              stockDiv.textContent = `Available Stock: ${data.stock_quantity} items`;
+              
+              // Insert after the uniform select
+              select.parentNode.appendChild(stockDiv);
+            })
+            .catch(error => {
+              console.error('Error fetching stock quantity:', error);
+            });
+        }
+      } else {
+        // Clear the data-previous-value attribute
+        select.removeAttribute('data-previous-value');
+      }
+    }
+    
+    // Add event listeners to existing uniform selects
+    document.querySelectorAll('.item-form select[id$="-uniform"]').forEach(select => {
+      select.addEventListener('change', () => handleUniformChange(select));
+      
+      // Store initial value
+      if (select.value) {
+        select.setAttribute('data-previous-value', select.value);
+        
+        // Fetch initial stock quantity
+        fetch(`/inventory/api/uniform/${select.value}/stock/`)
+          .then(response => response.json())
+          .then(data => {
+            const stockDiv = document.createElement('div');
+            stockDiv.className = 'stock-info';
+            
+            if (data.stock_quantity <= 5) {
+              stockDiv.classList.add('low-stock');
+            }
+            
+            stockDiv.textContent = `Available Stock: ${data.stock_quantity} items`;
+            select.parentNode.appendChild(stockDiv);
+          })
+          .catch(error => {
+            console.error('Error fetching stock quantity:', error);
+          });
+      }
+    });
     
     // Add new form when Add button is clicked
     addButton.addEventListener('click', function() {
@@ -191,6 +295,18 @@
             // Reset select dropdown to first option
             if (input.options.length > 0) {
               input.selectedIndex = 0;
+            }
+            
+            // Remove any old stock info
+            const stockInfo = input.parentNode.querySelector('.stock-info');
+            if (stockInfo) {
+              stockInfo.remove();
+            }
+            
+            // Add change event listener to the new select
+            if (input.id.endsWith('-uniform')) {
+              input.addEventListener('change', () => handleUniformChange(input));
+              input.removeAttribute('data-previous-value');
             }
           } else if (input.tagName === 'INPUT') {
             // Clear text/number inputs
@@ -230,6 +346,13 @@
         const formCount = parseInt(totalFormsInput.value);
         if (formCount > 1) {
           const itemForm = e.target.closest('.item-form');
+          
+          // Remove the uniform from our selected set
+          const uniformSelect = itemForm.querySelector('select[id$="-uniform"]');
+          if (uniformSelect && uniformSelect.value) {
+            selectedUniforms.delete(uniformSelect.value);
+          }
+          
           itemForm.remove();
           
           // Update total forms count
