@@ -48,9 +48,12 @@ if 'REPL_SLUG' in os.environ and 'REPL_OWNER' in os.environ:
 # Add Railway domain to allowed hosts
 if 'RAILWAY_STATIC_URL' in os.environ:
     ALLOWED_HOSTS.append('*.up.railway.app')
+    ALLOWED_HOSTS.append('*.railway.app')
     RAILWAY_DOMAIN = os.environ.get('RAILWAY_PUBLIC_DOMAIN', '')
     if RAILWAY_DOMAIN:
         ALLOWED_HOSTS.append(RAILWAY_DOMAIN)
+    # Also add explicit Railway domains
+    ALLOWED_HOSTS.append('uniform-inventory-system-production.up.railway.app')
 
 # Application definition
 
@@ -193,7 +196,13 @@ CSRF_COOKIE_HTTPONLY = True
 
 # If not in debug mode, add these security settings
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
+    # Disable SSL redirect for Railway (it handles SSL at the load balancer)
+    if 'RAILWAY_STATIC_URL' in os.environ:
+        SECURE_SSL_REDIRECT = False
+        SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    else:
+        SECURE_SSL_REDIRECT = True
+        
     SECURE_HSTS_SECONDS = 31536000  # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
@@ -214,6 +223,10 @@ AXES_FAILURE_LIMIT = 5  # Number of login attempts allowed before blocking
 AXES_COOLOFF_TIME = 1  # Locks out for 1 hour after exceeding failure limit
 AXES_LOCKOUT_TEMPLATE = 'inventory/lockout.html'  # Create this template later
 AXES_LOCKOUT_URL = '/inventory/locked-out/'  # We'll add this URL pattern later
+
+# Fix for django-axes session hash issue
+AXES_DISABLE_ACCESS_LOG = True  # Completely disable access logging
+AXES_RESET_ON_SUCCESS = True    # Reset counters on successful login
 
 # Additional security settings
 PASSWORD_RESET_TIMEOUT = 3600  # 1 hour for password reset links
@@ -242,6 +255,10 @@ if 'RAILWAY_STATIC_URL' in os.environ:
     RAILWAY_DOMAIN = f"https://{os.environ.get('RAILWAY_PUBLIC_DOMAIN', '')}"
     if RAILWAY_DOMAIN != "https://":
         CORS_ALLOWED_ORIGINS.append(RAILWAY_DOMAIN)
+    
+    # Also add CSRF trusted origins for Railway
+    CSRF_TRUSTED_ORIGINS = [RAILWAY_DOMAIN]
+    CSRF_TRUSTED_ORIGINS.append("https://*.up.railway.app")
 
 CORS_ALLOW_METHODS = [
     'GET',
