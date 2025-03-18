@@ -39,6 +39,11 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 # Update ALLOWED_HOSTS with your domain or production IP addresses for security
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
+# Add Replit domain to allowed hosts
+if 'REPL_SLUG' in os.environ and 'REPL_OWNER' in os.environ:
+    REPLIT_DOMAIN = f"{os.environ['REPL_SLUG']}.{os.environ['REPL_OWNER']}.repl.co"
+    ALLOWED_HOSTS.append(REPLIT_DOMAIN)
+    ALLOWED_HOSTS.append('*.repl.co')
 
 # Application definition
 
@@ -144,6 +149,9 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
+# Additional static file settings for Replit
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
@@ -179,6 +187,10 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = 'DENY'
 
+# Replit specific setting - this allows Replit to serve the app in an iframe
+if 'REPL_SLUG' in os.environ:
+    X_FRAME_OPTIONS = 'SAMEORIGIN'
+
 # Django-axes configuration for rate limiting
 AXES_FAILURE_LIMIT = 5  # Number of login attempts allowed before blocking
 AXES_COOLOFF_TIME = 1  # Locks out for 1 hour after exceeding failure limit
@@ -201,6 +213,11 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
 ]
+
+# Add Replit domain to CORS allowed origins
+if 'REPL_SLUG' in os.environ and 'REPL_OWNER' in os.environ:
+    REPLIT_DOMAIN = f"https://{os.environ['REPL_SLUG']}.{os.environ['REPL_OWNER']}.repl.co"
+    CORS_ALLOWED_ORIGINS.append(REPLIT_DOMAIN)
 
 CORS_ALLOW_METHODS = [
     'GET',
