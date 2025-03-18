@@ -1,1 +1,1 @@
-web: python manage.py migrate && python manage.py collectstatic --noinput && gunicorn uniform_inventory.wsgi:application --log-file - 
+web: python manage.py collectstatic --noinput && python manage.py migrate && gunicorn uniform_inventory.wsgi 

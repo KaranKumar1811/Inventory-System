@@ -45,6 +45,13 @@ if 'REPL_SLUG' in os.environ and 'REPL_OWNER' in os.environ:
     ALLOWED_HOSTS.append(REPLIT_DOMAIN)
     ALLOWED_HOSTS.append('*.repl.co')
 
+# Add Railway domain to allowed hosts
+if 'RAILWAY_STATIC_URL' in os.environ:
+    ALLOWED_HOSTS.append('*.up.railway.app')
+    RAILWAY_DOMAIN = os.environ.get('RAILWAY_PUBLIC_DOMAIN', '')
+    if RAILWAY_DOMAIN:
+        ALLOWED_HOSTS.append(RAILWAY_DOMAIN)
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -100,12 +107,23 @@ WSGI_APPLICATION = 'uniform_inventory.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# Configure database for development and Railway
+import dj_database_url
+
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL:
+    # If DATABASE_URL is provided (Railway provides this), use it
+    DATABASES = {
+        'default': dj_database_url.config(default=DATABASE_URL, conn_max_age=1800),
     }
-}
+else:
+    # Default SQLite database for local development
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Password validation
@@ -218,6 +236,12 @@ CORS_ALLOWED_ORIGINS = [
 if 'REPL_SLUG' in os.environ and 'REPL_OWNER' in os.environ:
     REPLIT_DOMAIN = f"https://{os.environ['REPL_SLUG']}.{os.environ['REPL_OWNER']}.repl.co"
     CORS_ALLOWED_ORIGINS.append(REPLIT_DOMAIN)
+
+# Add Railway domain to CORS allowed origins
+if 'RAILWAY_STATIC_URL' in os.environ:
+    RAILWAY_DOMAIN = f"https://{os.environ.get('RAILWAY_PUBLIC_DOMAIN', '')}"
+    if RAILWAY_DOMAIN != "https://":
+        CORS_ALLOWED_ORIGINS.append(RAILWAY_DOMAIN)
 
 CORS_ALLOW_METHODS = [
     'GET',

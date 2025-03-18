@@ -10,37 +10,33 @@ A comprehensive inventory management system for tracking employee uniforms.
 - Secure authentication and authorization
 - Dashboard with data visualization
 
-## Deploying to Replit
+## Deploying to Railway
 
-This application can be deployed to Replit by following these steps:
+This application can be deployed to Railway.app by following these steps:
 
-1. Create a new Repl on Replit.com
-2. Select "Import from GitHub" 
-3. Enter the GitHub repository URL
-4. Replit will automatically set up the environment
+1. Create an account on [Railway.app](https://railway.app/)
+2. Install the Railway CLI: `npm i -g @railway/cli`
+3. Login to Railway: `railway login`
+4. Initialize your project: `railway init`
+5. Create a PostgreSQL database: `railway add`
+6. Deploy your application: `railway up`
 
-### Running the Application
+### Railway Environment Variables
 
-The application should start automatically when the Repl is created. If it doesn't:
+Configure the following environment variables in your Railway project settings:
 
-1. In the Replit shell, run:
-   ```
-   bash replit_deploy.sh
-   ```
+- `DJANGO_SECRET_KEY`: Generate a secure key (python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())')
+- `DJANGO_DEBUG`: Set to "False" for production
+- `DJANGO_ALLOWED_HOSTS`: Your Railway domain (automatically added by settings.py)
+- `DATABASE_URL`: Automatically provided by Railway
 
-2. This script will:
-   - Install dependencies
-   - Run database migrations
-   - Collect static files
-   - Create a superuser account
-   - Start the Django server
+### First-time Setup
 
-### Important Notes
+After deploying, you'll need to create a superuser to access the admin panel:
 
-- The application will be accessible at the URL provided by Replit
-- Database will be stored within the Repl
-- Security has been configured for the Replit environment
-- Login rate limiting is enabled for security
+```
+railway run python manage.py createsuperuser
+```
 
 ## Local Development
 
