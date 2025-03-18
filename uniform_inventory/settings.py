@@ -39,6 +39,9 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 # Update ALLOWED_HOSTS with your domain or production IP addresses for security
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
+# Add custom domain
+ALLOWED_HOSTS.append('uniform.wolfpackinc.ca')
+
 # Add Railway domain to allowed hosts
 if 'RAILWAY_STATIC_URL' in os.environ:
     ALLOWED_HOSTS.append('*.up.railway.app')
@@ -233,7 +236,11 @@ CORS_ALLOWED_ORIGINS = [
     # Add frontend domains that are allowed to access the API
     "http://localhost:8000",
     "http://127.0.0.1:8000",
+    "https://uniform.wolfpackinc.ca",
 ]
+
+# Initialize CSRF trusted origins
+CSRF_TRUSTED_ORIGINS = ["https://uniform.wolfpackinc.ca"]
 
 # Add Railway domain to CORS allowed origins
 if 'RAILWAY_STATIC_URL' in os.environ:
@@ -241,8 +248,8 @@ if 'RAILWAY_STATIC_URL' in os.environ:
     if RAILWAY_DOMAIN != "https://":
         CORS_ALLOWED_ORIGINS.append(RAILWAY_DOMAIN)
     
-    # Also add CSRF trusted origins for Railway
-    CSRF_TRUSTED_ORIGINS = [RAILWAY_DOMAIN]
+    # Also add Railway domains to CSRF trusted origins
+    CSRF_TRUSTED_ORIGINS.append(RAILWAY_DOMAIN)
     CSRF_TRUSTED_ORIGINS.append("https://*.up.railway.app")
 
 CORS_ALLOW_METHODS = [
