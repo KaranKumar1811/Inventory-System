@@ -10,7 +10,16 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+import os
 from pathlib import Path
+from django.core.management.utils import get_random_secret_key
+
+# Try to load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,12 +29,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-e!e^bqc)!-py8koe!b$5890+h=wx5yhcd-ufsqcq%_&f47_7rg'
+# Use environment variable for SECRET_KEY or generate a random one
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-e!e^bqc)!-py8koe!b$5890+h=wx5yhcd-ufsqcq%_&f47_7rg')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Use environment variable to control DEBUG mode
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = []
+# Update ALLOWED_HOSTS with your domain or production IP addresses for security
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -37,17 +49,26 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-	'inventory',
+    'inventory',
+    # Add security related apps
+    'axes',  # For rate limiting login attempts
+    'corsheaders',  # For CORS protection
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Add whitenoise for static file serving
+    'corsheaders.middleware.CorsMiddleware',  # CORS middleware should be at the top
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Custom security middleware
+    'inventory.middleware.SecurityMiddleware',
+    # Add security middlewares
+    'axes.middleware.AxesMiddleware',  # Should be the last middleware
 ]
 
 ROOT_URLCONF = 'uniform_inventory.urls'
@@ -91,6 +112,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {
+            'min_length': 10,  # Increase minimum password length for better security
+        }
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
@@ -118,6 +142,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
@@ -126,6 +151,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Authentication settings
 AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',  # AxesBackend should be first
     'inventory.backends.EmailOrUsernameModelBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
@@ -133,3 +159,66 @@ AUTHENTICATION_BACKENDS = [
 LOGIN_URL = '/inventory/login/'
 LOGIN_REDIRECT_URL = '/inventory/dashboard/'
 LOGOUT_REDIRECT_URL = '/inventory/login/'
+
+# Session and cookie security
+SESSION_COOKIE_AGE = 3600  # 1 hour in seconds
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = True
+
+# If not in debug mode, add these security settings
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+# Security headers
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+X_FRAME_OPTIONS = 'DENY'
+
+# Django-axes configuration for rate limiting
+AXES_FAILURE_LIMIT = 5  # Number of login attempts allowed before blocking
+AXES_COOLOFF_TIME = 1  # Locks out for 1 hour after exceeding failure limit
+AXES_LOCKOUT_TEMPLATE = 'inventory/lockout.html'  # Create this template later
+AXES_LOCKOUT_URL = '/inventory/locked-out/'  # We'll add this URL pattern later
+
+# Additional security settings
+PASSWORD_RESET_TIMEOUT = 3600  # 1 hour for password reset links
+
+# Using a more secure password hasher
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+]
+
+# CORS Configuration
+CORS_ALLOWED_ORIGINS = [
+    # Add frontend domains that are allowed to access the API
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
+
+CORS_ALLOW_METHODS = [
+    'GET',
+    'POST',
+    'PUT',
+    'PATCH',
+    'DELETE',
+    'OPTIONS',
+]
+
+# Only allow cookies in cross-site HTTP requests
+CORS_ALLOW_CREDENTIALS = True
+
+# Content Security Policy
+CSP_DEFAULT_SRC = ("'self'",)
+CSP_SCRIPT_SRC = ("'self'", "https://cdn.jsdelivr.net")
+CSP_STYLE_SRC = ("'self'", "https://cdn.jsdelivr.net")
+CSP_IMG_SRC = ("'self'", "data:")
+CSP_FONT_SRC = ("'self'", "https://cdn.jsdelivr.net")
+CSP_FRAME_ANCESTORS = ("'none'",)
+CSP_FORM_ACTION = ("'self'",)

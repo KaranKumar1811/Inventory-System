@@ -29,6 +29,7 @@ from .views import (
     # Employee archiving
     toggle_employee_archive,
 )
+from django.views.generic import TemplateView
 
 app_name = 'inventory'
 
@@ -45,6 +46,7 @@ urlpatterns = [
     # Authentication
     path('login/', auth_views.LoginView.as_view(template_name='inventory/login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    path('locked-out/', TemplateView.as_view(template_name='inventory/lockout.html'), name='locked_out'),
     
     # User Management
     path('users/', UserListView.as_view(), name='user_list'),

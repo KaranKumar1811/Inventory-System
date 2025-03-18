@@ -1,5 +1,20 @@
-Django>=5.1.6
-xhtml2pdf>=0.2.13
-django-widget-tweaks>=1.5.0
-pandas>=2.2.0
-openpyxl>=3.1.5 
+# Core requirements
+Django==5.1.6
+xhtml2pdf==0.2.11
+pandas==2.2.0
+
+# Security packages
+django-axes==6.1.0  # For login attempt rate limiting
+argon2-cffi==23.1.0  # For more secure password hashing
+django-csp==3.8  # Content Security Policy
+django-cors-headers==4.3.1  # CORS protection
+dj-database-url==2.1.0  # For database URL config
+python-dotenv==1.0.0  # For loading environment variables
+whitenoise==6.6.0  # For serving static files securely
+
+# Production requirements
+gunicorn==21.2.0  # WSGI HTTP Server for UNIX
+dj-static==0.0.6  # Serve static files with gunicorn
+
+# Optional production database
+# psycopg2-binary==2.9.9  # PostgreSQL adapter

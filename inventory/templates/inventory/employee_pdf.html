@@ -17,39 +17,29 @@
         .header {
             padding-bottom: 10px;
             border-bottom: 1px solid #ddd;
-            margin-bottom: 15px;
+            margin-bottom: 5px;
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
-        .logo-container {
+        .page-header {
+            width: 100%;
+            position: relative;
+            margin-bottom: 15px;
             text-align: center;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
         .logo {
-            height: 80px;
-            margin-right: 15px;
-        }
-        .title-container {
+            max-height: 100px;
+            width: 100px;
             display: inline-block;
-            vertical-align: middle;
+            margin: 0 auto 15px auto;
         }
         .employee-info {
-            margin-bottom: 15px;
+            margin-bottom: 5px;
             display: block;
         }
         .employee-info div {
             margin-bottom: 5px;
-        }
-        .document-title {
-            text-align: center;
-            color: #3498db;
-            font-size: 24px;
-            margin-bottom: 5px;
-            font-weight: bold;
         }
         h1 { 
             color: #2c3e50; 
@@ -58,17 +48,17 @@
             margin-top: 0;
         }
         h2 { 
-            margin-top: 20px; 
+            margin-top: 5px; 
             color: #2c3e50; 
             font-size: 16px;
             border-bottom: 2px solid #3498db;
             padding-bottom: 5px;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
         table { 
             width: 100%; 
             border-collapse: collapse; 
-            margin-bottom: 10px;
+            margin-bottom: 5px;
             font-size: 11px;
         }
         table, th, td { 
@@ -80,10 +70,10 @@
             color: white; 
             font-weight: bold;
             text-align: left;
-            padding: 8px 10px;
+            padding: 4px 5px;
         }
         td { 
-            padding: 8px 10px;
+            padding: 4px 5px;
             vertical-align: top;
         }
         .return-status {
@@ -100,7 +90,7 @@
         }
         .return-list {
             margin: 0;
-            padding: 0 0 0 20px;
+            padding: 0 0 0 5px;
             font-size: 10px;
             color: #666;
             list-style-type: circle;
@@ -126,7 +116,7 @@
 
         /* Transaction info container */
         .transaction-info {
-            margin: 10px 0 5px 0;
+            margin: 5px 0 2.5px 0;
             padding: 8px;
             background-color: #f8f9fa;
         }
@@ -146,33 +136,33 @@
         }
 
         .account-summary {
-            margin-top: 30px;
-            padding-top: 20px;
+            margin-top: 15px;
+            padding-top: 10px;
             border-top: 2px solid #4a7acd;
         }
         .account-title {
             font-size: 16px;
             font-weight: bold;
             color: #2c3e50;
-            margin-bottom: 15px;
+            margin-bottom: 8px;
         }
         /* Table styles for account summary */
         .summary-table {
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
         .summary-table th {
             background-color: #4a7acd;
             color: white;
-            padding: 10px;
+            padding: 5px;
             text-align: center;
             font-weight: bold;
             border: 1px solid #fff;
         }
         .summary-table td {
-            padding: 10px;
+            padding: 5px;
             text-align: center;
             border: 1px solid #ddd;
             background-color: #f8f9fa;
@@ -186,11 +176,8 @@
     </style>
 </head>
 <body>
-    <div class="logo-container">
+    <div class="page-header">
         <img src="data:image/png;base64,{{ logo_data }}" alt="Company Logo" class="logo">
-        <div class="title-container">
-            <div class="document-title">Uniform Inventory System</div>
-        </div>
     </div>
     
     <div class="header">
