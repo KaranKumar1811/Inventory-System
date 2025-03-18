@@ -11,19 +11,31 @@ def remove_all_hardcoded_users(apps, schema_editor):
     
     # Define the usernames of all hardcoded users we created
     hardcoded_usernames = ['admin', 'system_admin', 'admin_new']
+    hardcoded_emails = ['admin@example.com', 'system_admin@uniform-inventory.example.com', 'admin_new@example.com']
     
     # Count superusers that aren't in our hardcoded list
     other_superusers_count = User.objects.filter(
         is_superuser=True
     ).exclude(
         username__in=hardcoded_usernames
+    ).exclude(
+        email__in=hardcoded_emails
     ).count()
     
     # Only remove hardcoded users if at least one other superuser exists
     if other_superusers_count > 0:
-        # Delete all hardcoded users
-        User.objects.filter(username__in=hardcoded_usernames).delete()
-        print(f"Removed hardcoded superusers: {', '.join(hardcoded_usernames)}")
+        # Delete all hardcoded users by username or email
+        deleted_count = 0
+        
+        # Delete by username
+        username_deleted = User.objects.filter(username__in=hardcoded_usernames).delete()[0]
+        deleted_count += username_deleted
+        
+        # Delete by email (in case usernames were changed)
+        email_deleted = User.objects.filter(email__in=hardcoded_emails).delete()[0]
+        deleted_count += email_deleted
+        
+        print(f"Removed {deleted_count} hardcoded superusers")
     else:
         print("Keeping hardcoded superusers as no other superusers exist")
 
