@@ -113,6 +113,7 @@ class MultiItemTransaction(models.Model):
     loaned = models.BooleanField(default=False)
     returned = models.BooleanField(default=False)
     return_date = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True, null=True, help_text="Transaction notes, including serial numbers for items")
     
     def total_cost(self):
         """Calculate the total cost of all items in this transaction."""
@@ -139,8 +140,9 @@ class TransactionItem(models.Model):
     def total_cost(self):
         return self.uniform.price * self.quantity
     
+    @property
     def total_returned(self):
-        return sum(record.quantity_returned for record in self.return_records.all())
+        return sum(record.returned_quantity for record in self.itemreturnrecord_set.all())
     
     def __str__(self):
         return f"{self.quantity} x {self.uniform.name} ({self.uniform.size})"

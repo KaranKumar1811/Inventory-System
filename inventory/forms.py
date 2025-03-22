@@ -112,7 +112,7 @@ class MultiItemTransactionForm(forms.ModelForm):
     
     class Meta:
         model = MultiItemTransaction
-        fields = ['employee', 'payment_option', 'loaned']
+        fields = ['employee', 'payment_option', 'loaned', 'notes']
         widgets = {
             'employee': forms.Select(attrs={
                 'class': 'form-select',
@@ -122,6 +122,11 @@ class MultiItemTransactionForm(forms.ModelForm):
                 'class': 'form-check-input',
                 'role': 'switch',
                 'aria-checked': 'false'
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Enter transaction notes, including serial numbers for items'
             }),
         }
     
