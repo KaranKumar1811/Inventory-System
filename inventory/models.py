@@ -130,21 +130,20 @@ class MultiItemTransaction(models.Model):
         return f"Multi-Item Transaction {self.id} - {self.employee}"
 
 class TransactionItem(models.Model):
-    transaction = models.ForeignKey(MultiItemTransaction, related_name='items', on_delete=models.CASCADE)
+    transaction = models.ForeignKey(MultiItemTransaction, on_delete=models.CASCADE, related_name='items')
     uniform = models.ForeignKey(Uniform, on_delete=models.CASCADE)
-    quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    quantity = models.PositiveIntegerField(default=1)
+    serial_number = models.CharField(max_length=100, null=True, blank=True, 
+                                    help_text="Serial number for tracked items")
     
     def total_cost(self):
-        """Calculate the total cost of this item."""
-        return self.quantity * self.uniform.price
+        return self.uniform.price * self.quantity
     
-    @property
     def total_returned(self):
-        """Calculate the total quantity that has been returned for this item."""
-        return self.itemreturnrecord_set.aggregate(total=Sum('returned_quantity'))['total'] or 0
+        return sum(record.quantity_returned for record in self.return_records.all())
     
     def __str__(self):
-        return f"Item in Transaction {self.transaction.id} - {self.quantity} {self.uniform.name}"
+        return f"{self.quantity} x {self.uniform.name} ({self.uniform.size})"
 
 class ItemReturnRecord(models.Model):
     DAMAGE_TYPE_CHOICES = [

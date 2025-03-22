@@ -135,7 +135,12 @@
                   <td>
                     <small>
                       {% for item in transaction.items.all %}
-                        <div>{{ item.quantity }} × {{ item.uniform.name }} ({{ item.uniform.size }})</div>
+                        <div>
+                          {{ item.quantity }} × {{ item.uniform.name }} ({{ item.uniform.size }})
+                          {% if item.serial_number %}
+                            <span class="badge bg-info">S/N: {{ item.serial_number }}</span>
+                          {% endif %}
+                        </div>
                       {% endfor %}
                     </small>
                   </td>

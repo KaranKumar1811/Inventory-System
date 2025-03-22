@@ -102,6 +102,7 @@
             <th>Size</th>
             <th>Price</th>
             <th>Quantity</th>
+            <th>Serial #</th>
             <th>Return Status</th>
             <th>Return</th>
           </tr>
@@ -122,6 +123,13 @@
               <td>{{ item.uniform.size }}</td>
               <td>${{ item.uniform.price }}</td>
               <td>{{ item.quantity }}</td>
+              <td>
+                {% if item.serial_number %}
+                  <span class="badge bg-info">{{ item.serial_number }}</span>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
               <td>
                 {% if item.total_returned %}
                   <div class="text-success">

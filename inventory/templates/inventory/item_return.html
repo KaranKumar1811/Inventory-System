@@ -25,6 +25,9 @@
                 <div class="mb-2"><strong>Transaction Date:</strong> {{ transaction_item.transaction.transaction_date|date:"M d, Y" }}</div>
                 <div class="mb-2"><strong>Uniform:</strong> {{ transaction_item.uniform.name }}</div>
                 <div class="mb-2"><strong>Size:</strong> {{ transaction_item.uniform.size }}</div>
+                {% if transaction_item.serial_number %}
+                <div class="mb-2"><strong>Serial Number:</strong> <span class="badge bg-info">{{ transaction_item.serial_number }}</span></div>
+                {% endif %}
               </div>
               <div class="col-md-6">
                 <div class="mb-2"><strong>Total Quantity:</strong> {{ transaction_item.quantity }}</div>

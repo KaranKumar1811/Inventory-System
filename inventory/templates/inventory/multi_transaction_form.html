@@ -83,6 +83,15 @@
                 </div>
               </div>
               
+              <div class="row g-3 mt-2 serial-number-row">
+                <div class="col-md-12">
+                  <label for="{{ item_form.serial_number.id_for_label }}" class="form-label">Serial Number (Optional)</label>
+                  {{ item_form.serial_number.errors }}
+                  {{ item_form.serial_number }}
+                  <small class="form-text text-muted">Only enter a serial number for items that need individual tracking.</small>
+                </div>
+              </div>
+              
               {% for field in item_form.hidden_fields %}
               {{ field }}
               {% endfor %}
@@ -338,6 +347,15 @@
       
       // Add the new form to the container
       formsContainer.appendChild(newForm);
+      
+      // After the form is added and initialized, set up the quantity input listener
+      setTimeout(() => {
+        const newFormQuantityInput = newForm.querySelector('input[id$="-quantity"]');
+        if (newFormQuantityInput) {
+          newFormQuantityInput.addEventListener('change', () => updateSerialNumberVisibility(newFormQuantityInput));
+          updateSerialNumberVisibility(newFormQuantityInput);
+        }
+      }, 0);
     });
     
     // Handle remove button clicks
@@ -377,6 +395,27 @@
         loanedLabel.style.display = this.checked ? 'inline' : 'none';
       });
     }
+    
+    // Serial number field visibility management
+    function updateSerialNumberVisibility(quantityInput) {
+      const formRow = quantityInput.closest('.item-form');
+      const serialNumberRow = formRow.querySelector('.serial-number-row');
+      const serialNumberInput = formRow.querySelector('input[id$="-serial_number"]');
+      
+      if (parseInt(quantityInput.value) === 1) {
+        serialNumberRow.style.display = 'flex';
+      } else {
+        serialNumberRow.style.display = 'none';
+        serialNumberInput.value = ''; // Clear serial number if quantity is more than 1
+      }
+    }
+    
+    // Add event listeners to existing quantity inputs
+    document.querySelectorAll('.item-form input[id$="-quantity"]').forEach(input => {
+      input.addEventListener('change', () => updateSerialNumberVisibility(input));
+      // Initialize visibility based on current value
+      updateSerialNumberVisibility(input);
+    });
   });
 </script>
 {% endblock %} 

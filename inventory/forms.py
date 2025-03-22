@@ -137,7 +137,7 @@ class MultiItemTransactionForm(forms.ModelForm):
 class TransactionItemForm(forms.ModelForm):
     class Meta:
         model = TransactionItem
-        fields = ['uniform', 'quantity']
+        fields = ['uniform', 'quantity', 'serial_number']
         widgets = {
             'uniform': forms.Select(attrs={
                 'class': 'form-select',
@@ -147,12 +147,18 @@ class TransactionItemForm(forms.ModelForm):
                 'class': 'form-control', 
                 'min': '1'
             }),
+            'serial_number': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Optional: Enter serial number for tracked items'
+            }),
         }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Add better empty label for uniform dropdown
         self.fields['uniform'].empty_label = "Select a uniform"
+        # Make serial_number not required
+        self.fields['serial_number'].required = False
 
 # Create a formset for multiple TransactionItems
 TransactionItemFormSet = inlineformset_factory(

@@ -59,7 +59,8 @@ class SearchView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
                     Q(employee__first_name__icontains=query) |
                     Q(employee__last_name__icontains=query) |
                     Q(employee__employee_id__icontains=query) |
-                    Q(items__uniform__name__icontains=query)
+                    Q(items__uniform__name__icontains=query) |
+                    Q(items__serial_number__icontains=query)
                 ).distinct()
             
             context['query'] = query
