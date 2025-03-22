@@ -44,11 +44,18 @@ class SecurityMiddleware:
             r'(SLEEP\(\s*\d+\s*\)|BENCHMARK\(\s*\d+\s*,)',
         ]
         
+        # Fields to exclude from SQL injection checks (allow special characters)
+        excluded_fields = ['notes']
+        
         # Combine GET and POST parameters
         all_params = dict(list(request.GET.items()) + list(request.POST.items()))
         
         # Check each parameter value
         for param, value in all_params.items():
+            # Skip notes field which may contain special characters
+            if param in excluded_fields:
+                continue
+                
             if isinstance(value, str):
                 for pattern in sql_patterns:
                     if re.search(pattern, value, re.IGNORECASE):
