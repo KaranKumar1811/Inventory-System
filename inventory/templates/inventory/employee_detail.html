@@ -102,13 +102,20 @@
             <th>Size</th>
             <th>Price</th>
             <th>Quantity</th>
-            <th>Notes/Serial #</th>
             <th>Return Status</th>
             <th>Return</th>
           </tr>
         </thead>
         <tbody>
           {% for transaction in transactions %}
+            {% if transaction.notes %}
+            <tr class="table-info">
+              <td colspan="9" class="small py-1">
+                <strong><i class="bi bi-info-circle me-1"></i>Transaction #{{ transaction.pk }} Notes/Serial #:</strong> 
+                {{ transaction.notes|linebreaksbr }}
+              </td>
+            </tr>
+            {% endif %}
             {% for item in transaction.items.all %}
             <tr {% if forloop.first %}class="border-top border-primary" id="transaction-{{ transaction.id }}"{% endif %}>
               {% if forloop.first %}
@@ -123,15 +130,6 @@
               <td>{{ item.uniform.size }}</td>
               <td>${{ item.uniform.price }}</td>
               <td>{{ item.quantity }}</td>
-              <td>
-                {% if transaction.notes and forloop.first %}
-                  <div class="small text-info">
-                    <i class="bi bi-info-circle me-1"></i>{{ transaction.notes|linebreaksbr }}
-                  </div>
-                {% else %}
-                  <span class="text-muted">—</span>
-                {% endif %}
-              </td>
               <td>
                 {% if item.total_returned %}
                   <div class="text-success">
