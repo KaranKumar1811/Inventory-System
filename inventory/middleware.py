@@ -44,19 +44,11 @@ class SecurityMiddleware:
             r'(SLEEP\(\s*\d+\s*\)|BENCHMARK\(\s*\d+\s*,)',
         ]
         
-        # Fields to exclude from SQL injection checks
-        excluded_fields = ['serial_number', 'items-0-serial_number', 'items-1-serial_number', 
-                         'items-2-serial_number', 'items-3-serial_number', 'items-4-serial_number']
-        
         # Combine GET and POST parameters
         all_params = dict(list(request.GET.items()) + list(request.POST.items()))
         
         # Check each parameter value
         for param, value in all_params.items():
-            # Skip excluded fields like serial numbers which may have special characters
-            if param in excluded_fields or param.endswith('-serial_number'):
-                continue
-                
             if isinstance(value, str):
                 for pattern in sql_patterns:
                     if re.search(pattern, value, re.IGNORECASE):
