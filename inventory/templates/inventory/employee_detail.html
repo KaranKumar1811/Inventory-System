@@ -102,6 +102,7 @@
             <th>Size</th>
             <th>Price</th>
             <th>Quantity</th>
+            <th>Notes/Serial #</th>
             <th>Return Status</th>
             <th>Return</th>
           </tr>
@@ -116,24 +117,21 @@
               <td rowspan="{{ transaction.items.count }}">
                 {{ transaction.get_payment_option_display }}
                 {% if transaction.loaned %}<span class="badge bg-warning">Loaned</span>{% endif %}
-                {% if transaction.notes %}
-                <div class="mt-2 small">
-                  <a class="text-decoration-none" data-bs-toggle="collapse" href="#notes-{{ transaction.id }}" role="button" aria-expanded="false">
-                    <i class="bi bi-info-circle me-1"></i>View Notes
-                  </a>
-                  <div class="collapse mt-1" id="notes-{{ transaction.id }}">
-                    <div class="card card-body py-1 px-2 bg-light">
-                      <small>{{ transaction.notes|linebreaksbr }}</small>
-                    </div>
-                  </div>
-                </div>
-                {% endif %}
               </td>
               {% endif %}
               <td>{{ item.uniform.name }}</td>
               <td>{{ item.uniform.size }}</td>
               <td>${{ item.uniform.price }}</td>
               <td>{{ item.quantity }}</td>
+              <td>
+                {% if transaction.notes and forloop.first %}
+                  <div class="small text-info">
+                    <i class="bi bi-info-circle me-1"></i>{{ transaction.notes|linebreaksbr }}
+                  </div>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
               <td>
                 {% if item.total_returned %}
                   <div class="text-success">
