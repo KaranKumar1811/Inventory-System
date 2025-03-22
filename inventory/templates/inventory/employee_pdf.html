@@ -58,23 +58,35 @@
         table { 
             width: 100%; 
             border-collapse: collapse; 
-            margin-bottom: 5px;
+            margin-bottom: 15px;
             font-size: 11px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
         }
         table, th, td { 
             border: none;
-            border-bottom: 1px solid #eee;
         }
         th { 
             background-color: #212529; 
             color: white; 
             font-weight: bold;
             text-align: left;
-            padding: 4px 5px;
+            padding: 8px 10px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         td { 
-            padding: 4px 5px;
+            padding: 8px 10px;
             vertical-align: top;
+            border-bottom: 1px solid #eee;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:last-child td {
+            border-bottom: none;
         }
         .return-status {
             color: #27ae60;
@@ -116,13 +128,17 @@
 
         /* Transaction info container */
         .transaction-info {
-            margin: 5px 0 2.5px 0;
-            padding: 8px;
+            margin: 15px 0 5px 0;
+            padding: 10px;
             background-color: #f8f9fa;
+            border-top: 3px solid #3498db;
+            border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         .transaction-header-table {
             width: 100%;
             border-collapse: collapse;
+            margin-bottom: 0;
         }
         .transaction-header-left,
         .transaction-header-right {
@@ -130,15 +146,26 @@
             font-weight: bold;
             vertical-align: middle;
             padding: 0;
+            border: none;
         }
         .transaction-header-right {
             text-align: right;
         }
 
+        /* Transaction notes styling */
+        .transaction-notes {
+            font-size: 11px; 
+            margin-top: 5px; 
+            padding: 7px 10px; 
+            background-color: #e9f7fe; 
+            border-left: 3px solid #3498db;
+            border-radius: 0 4px 4px 0;
+        }
+
         .account-summary {
-            margin-top: 15px;
-            padding-top: 10px;
-            border-top: 2px solid #4a7acd;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 2px solid #3498db;
         }
         .account-title {
             font-size: 16px;
@@ -152,17 +179,20 @@
             border-collapse: separate;
             border-spacing: 0;
             margin-bottom: 10px;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         .summary-table th {
-            background-color: #4a7acd;
+            background-color: #3498db;
             color: white;
-            padding: 5px;
+            padding: 8px;
             text-align: center;
             font-weight: bold;
             border: 1px solid #fff;
         }
         .summary-table td {
-            padding: 5px;
+            padding: 8px;
             text-align: center;
             border: 1px solid #ddd;
             background-color: #f8f9fa;
@@ -220,18 +250,18 @@
             </tr>
         </table>
         {% if transaction.notes %}
-        <div style="font-size: 11px; margin-top: 5px; padding: 7px; background-color: #e9f7fe; border-left: 3px solid #3498db;">
+        <div class="transaction-notes">
             <strong>Transaction Notes/Serial #:</strong> {{ transaction.notes|linebreaksbr }}
         </div>
         {% endif %}
     </div>
     
-    <table>
+    <table style="border: 1px solid #ddd; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
         <tr>
-            <th>Uniform Name</th>
-            <th>Size</th>
-            <th>Price</th>
-            <th>Qty</th>
+            <th style="border-right: 1px solid rgba(255,255,255,0.1);">Uniform Name</th>
+            <th style="border-right: 1px solid rgba(255,255,255,0.1);">Size</th>
+            <th style="border-right: 1px solid rgba(255,255,255,0.1);">Price</th>
+            <th style="border-right: 1px solid rgba(255,255,255,0.1);">Qty</th>
             <th>Return Status</th>
         </tr>
         {% for item in transaction.items.all %}

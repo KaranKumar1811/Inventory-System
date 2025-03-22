@@ -12,6 +12,85 @@
     display: inline-block;
     margin-left: 10px;
   }
+  
+  /* Enhanced table styling */
+  .transaction-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    margin-bottom: 1.5rem;
+  }
+  
+  .transaction-table thead th {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 12px 15px;
+  }
+  
+  .transaction-header {
+    border-top: 5px solid #3498db !important;
+    background-color: #f8f9fa;
+  }
+  
+  .transaction-notes {
+    background-color: #e8f4fc;
+    border-left: 5px solid #3498db;
+    padding: 10px 15px !important;
+    font-size: 0.9rem;
+  }
+  
+  .transaction-notes i {
+    color: #3498db;
+  }
+  
+  /* Alternate row coloring for better readability */
+  .transaction-table tbody tr:nth-of-type(odd) {
+    background-color: rgba(0,0,0,0.02);
+  }
+  
+  /* Hover effect */
+  .transaction-table tbody tr:hover {
+    background-color: rgba(52, 152, 219, 0.05);
+  }
+  
+  /* Cell styling */
+  .transaction-table td {
+    padding: 10px 15px;
+    vertical-align: middle;
+    border-top: 1px solid #e9ecef;
+  }
+  
+  /* New section for transaction groups */
+  .transaction-group {
+    margin-bottom: 20px;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  
+  /* Return button styling */
+  .btn-return {
+    padding: 0.25rem 0.75rem;
+    border-radius: 30px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.2s;
+  }
+  
+  .btn-return:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+  }
+  
+  /* Badge styling */
+  .status-badge {
+    padding: 0.4em 0.8em;
+    border-radius: 30px;
+    font-weight: 500;
+    font-size: 0.8rem;
+  }
 </style>
 {% endblock %}
 
@@ -92,7 +171,7 @@
     <!-- Transactions -->
     {% if transactions %}
     <div class="table-responsive">
-      <table class="table table-hover">
+      <table class="table transaction-table">
         <thead class="table-dark">
           <tr>
             <th>Transaction</th>
@@ -109,17 +188,17 @@
         <tbody>
           {% for transaction in transactions %}
             {% if transaction.notes %}
-            <tr class="table-info">
-              <td colspan="9" class="small py-1">
+            <tr>
+              <td colspan="9" class="transaction-notes">
                 <strong><i class="bi bi-info-circle me-1"></i>Transaction #{{ transaction.pk }} Notes/Serial #:</strong> 
                 {{ transaction.notes|linebreaksbr }}
               </td>
             </tr>
             {% endif %}
             {% for item in transaction.items.all %}
-            <tr {% if forloop.first %}class="border-top border-primary" id="transaction-{{ transaction.id }}"{% endif %}>
+            <tr {% if forloop.first %}class="transaction-header" id="transaction-{{ transaction.id }}"{% endif %}>
               {% if forloop.first %}
-              <td rowspan="{{ transaction.items.count }}">{{ transaction.pk }}</td>
+              <td rowspan="{{ transaction.items.count }}"><strong>#{{ transaction.pk }}</strong></td>
               <td rowspan="{{ transaction.items.count }}">{{ transaction.transaction_date|date:"M d, Y h:i a" }}</td>
               <td rowspan="{{ transaction.items.count }}">
                 {{ transaction.get_payment_option_display }}
@@ -151,12 +230,12 @@
                     </ul>
                   </div>
                 {% else %}
-                  <span class="badge bg-warning">Not returned</span>
+                  <span class="badge bg-warning status-badge">Not returned</span>
                 {% endif %}
               </td>
               <td>
                 {% if not transaction.returned and item.total_returned < item.quantity %}
-                  <a href="{% url 'inventory:item_return' item.id %}" class="btn btn-success">
+                  <a href="{% url 'inventory:item_return' item.id %}" class="btn btn-success btn-return">
                     <i class="bi bi-arrow-return-left me-1"></i>Return
                   </a>
                 {% endif %}
