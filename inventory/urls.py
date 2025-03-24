@@ -29,6 +29,7 @@ from .views import (
     # Employee archiving
     toggle_employee_archive,
     uniform_stock_api,
+    AssetBreakdownView,
 )
 from django.views.generic import TemplateView
 
@@ -84,6 +85,7 @@ urlpatterns = [
     
     # Add a new URL pattern for the uniform stock API
     path('api/uniform/<int:uniform_id>/stock/', uniform_stock_api, name='uniform_stock_api'),
+    path('asset-breakdown/', AssetBreakdownView.as_view(), name='asset_breakdown'),
 ]
 
 

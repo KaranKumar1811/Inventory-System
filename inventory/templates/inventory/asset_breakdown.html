@@ -1,0 +1,322 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load inventory_filters %}
+
+{% block title %}Asset Breakdown - Uniform Inventory System{% endblock %}
+
+{% block extra_css %}
+<style>
+  .page-header {
+    padding: 20px 0;
+    margin-bottom: 30px;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .breakdown-card {
+    transition: transform 0.3s;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  
+  .breakdown-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 10px rgba(0,0,0,0.15);
+  }
+  
+  .summary-card {
+    background-color: #f8f9fa;
+    border-left: 4px solid #343a40 !important;
+  }
+  
+  .inventory-card {
+    border-left: 4px solid #28a745 !important;
+  }
+  
+  .distributed-card {
+    border-left: 4px solid #007bff !important;
+  }
+  
+  .damaged-card {
+    border-left: 4px solid #dc3545 !important;
+  }
+  
+  .value-box {
+    text-align: center;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+  }
+  
+  .value-label {
+    font-size: 0.9rem;
+    color: rgba(255,255,255,0.8);
+    margin-bottom: 5px;
+  }
+  
+  .value-amount {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: white;
+  }
+  
+  .bg-primary-gradient {
+    background: linear-gradient(45deg, #007bff, #0056b3);
+  }
+  
+  .bg-success-gradient {
+    background: linear-gradient(45deg, #28a745, #218838);
+  }
+  
+  .bg-danger-gradient {
+    background: linear-gradient(45deg, #dc3545, #c82333);
+  }
+  
+  .bg-dark-gradient {
+    background: linear-gradient(45deg, #343a40, #23272b);
+  }
+  
+  .breakdown-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+  }
+  
+  .category-row:hover {
+    background-color: rgba(0,123,255,0.05);
+  }
+  
+  .back-to-dashboard {
+    margin-bottom: 20px;
+  }
+  
+  .breakdown-chart {
+    height: 300px;
+    width: 100%;
+    margin-bottom: 20px;
+  }
+  
+  @media (max-width: 768px) {
+    .value-box {
+      margin-bottom: 15px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="back-to-dashboard mb-4">
+    <a href="{% url 'inventory:dashboard' %}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </a>
+  </div>
+
+  <div class="page-header">
+    <h1 class="display-4">Asset Value Breakdown</h1>
+    <p class="lead text-muted">Comprehensive breakdown of uniform inventory asset values</p>
+  </div>
+  
+  <!-- Total Asset Value Breakdown Card -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card breakdown-card">
+        <div class="card-header bg-dark text-white">
+          <h5 class="mb-0"><i class="bi bi-calculator"></i> Total Asset Value Calculation</h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-bordered">
+              <thead class="table-light">
+                <tr>
+                  <th style="width: 60%">Component</th>
+                  <th class="text-end" style="width: 40%">Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <strong class="text-success"><i class="bi bi-box-seam-fill me-2"></i>Inventory Value</strong>
+                    <div class="small text-muted">Value of all items currently in stock</div>
+                  </td>
+                  <td class="text-end h5 text-success">${{ inventory_value|floatformat:2 }}</td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong class="text-primary"><i class="bi bi-people-fill me-2"></i>Distributed Value</strong>
+                    <div class="small text-muted">Value of all items with employees</div>
+                  </td>
+                  <td class="text-end h5 text-primary">${{ distributed_value|floatformat:2 }}</td>
+                </tr>
+                <tr class="table-light">
+                  <td>
+                    <strong class="text-dark"><i class="bi bi-calculator me-2"></i>Total Asset Value</strong>
+                    <div class="small text-muted">Inventory Value + Distributed Value</div>
+                  </td>
+                  <td class="text-end h4 text-dark">${{ total_asset_value|floatformat:2 }}</td>
+                </tr>
+                <tr>
+                  <td colspan="2" class="small text-muted fst-italic">
+                    <i class="bi bi-info-circle me-1"></i> Damaged items value (${{ damaged_value|floatformat:2 }}) is tracked separately and not included in total asset value calculation.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Summary Cards -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="value-box bg-success-gradient">
+        <div class="value-label">Inventory Value</div>
+        <div class="value-amount">${{ inventory_value|floatformat:2 }}</div>
+        <small class="text-white-50">Items in stock</small>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="value-box bg-primary-gradient">
+        <div class="value-label">Distributed Value</div>
+        <div class="value-amount">${{ distributed_value|floatformat:2 }}</div>
+        <small class="text-white-50">Items with employees</small>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="value-box bg-danger-gradient">
+        <div class="value-label">Damaged Value</div>
+        <div class="value-amount">${{ damaged_value|floatformat:2 }}</div>
+        <small class="text-white-50">Damaged items</small>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="value-box bg-dark-gradient">
+        <div class="value-label">Total Asset Value</div>
+        <div class="value-amount">${{ total_asset_value|floatformat:2 }}</div>
+        <small class="text-white-50">Excluding damaged items</small>
+      </div>
+    </div>
+  </div>
+  
+  <div class="row">
+    <!-- Inventory Breakdown -->
+    <div class="col-md-6 mb-4">
+      <div class="card breakdown-card">
+        <div class="card-header bg-success text-white">
+          <h5 class="mb-0"><i class="bi bi-box-seam-fill"></i> Inventory Value Breakdown</h5>
+        </div>
+        <div class="card-body">
+          <h6 class="card-subtitle mb-3">By Uniform Category</h6>
+          <div class="table-responsive">
+            <table class="table table-hover breakdown-table">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th class="text-end">Value</th>
+                  <th class="text-end">% of Inventory</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for category, value in inventory_by_category %}
+                <tr class="category-row">
+                  <td>{{ category }}</td>
+                  <td class="text-end">${{ value|floatformat:2 }}</td>
+                  <td class="text-end">{{ value|div:inventory_value|mul:100|floatformat:1 }}%</td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="3" class="text-center">No inventory data available</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Distributed Value Breakdown -->
+    <div class="col-md-6 mb-4">
+      <div class="card breakdown-card">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0"><i class="bi bi-people-fill"></i> Distributed Value Breakdown</h5>
+        </div>
+        <div class="card-body">
+          <h6 class="card-subtitle mb-3">By Uniform Category</h6>
+          <div class="table-responsive">
+            <table class="table table-hover breakdown-table">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th class="text-end">Value</th>
+                  <th class="text-end">% of Distributed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for category, value in distributed_by_category %}
+                <tr class="category-row">
+                  <td>{{ category }}</td>
+                  <td class="text-end">${{ value|floatformat:2 }}</td>
+                  <td class="text-end">{{ value|div:distributed_value|mul:100|floatformat:1 }}%</td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="3" class="text-center">No distributed items data available</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Damaged Items Breakdown -->
+  <div class="row">
+    <div class="col-md-6 mb-4">
+      <div class="card breakdown-card">
+        <div class="card-header bg-danger text-white">
+          <h5 class="mb-0"><i class="bi bi-exclamation-triangle-fill"></i> Damaged Items Breakdown</h5>
+        </div>
+        <div class="card-body">
+          <h6 class="card-subtitle mb-3">By Damage Type</h6>
+          <div class="table-responsive">
+            <table class="table table-hover breakdown-table">
+              <thead>
+                <tr>
+                  <th>Damage Type</th>
+                  <th class="text-end">Value</th>
+                  <th class="text-end">% of Damaged</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for damage_type, value in damaged_by_type %}
+                <tr class="category-row">
+                  <td>{{ damage_type }}</td>
+                  <td class="text-end">${{ value|floatformat:2 }}</td>
+                  <td class="text-end">{{ value|div:damaged_value|mul:100|floatformat:1 }}%</td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="3" class="text-center">No damaged items data available</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Custom template filters
+  document.addEventListener('DOMContentLoaded', function() {
+    // Add any additional JavaScript for interactivity
+  });
+</script>
+{% endblock %} 

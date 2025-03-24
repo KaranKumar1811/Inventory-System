@@ -1019,3 +1019,132 @@ def uniform_stock_api(request, uniform_id):
         })
     except Uniform.DoesNotExist:
         return JsonResponse({'error': 'Uniform not found'}, status=404)
+
+# --- Asset Breakdown View ---
+class AssetBreakdownView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    template_name = 'inventory/asset_breakdown.html'
+    
+    def test_func(self):
+        return self.request.user.is_authenticated
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Get uniform categories and sizes for grouping
+        uniforms = Uniform.objects.all()
+        categories = list(set([u.name for u in uniforms]))
+        sizes = list(set([u.size for u in uniforms]))
+        
+        # Calculate inventory value (items in stock) by category and size
+        inventory_by_category = {}
+        for category in categories:
+            category_uniforms = Uniform.objects.filter(name=category)
+            category_value = category_uniforms.annotate(
+                item_value=F('stock_quantity') * F('price')
+            ).aggregate(total_value=Sum('item_value'))['total_value'] or 0
+            inventory_by_category[category] = category_value
+        
+        inventory_by_size = {}
+        for size in sizes:
+            size_uniforms = Uniform.objects.filter(size=size)
+            size_value = size_uniforms.annotate(
+                item_value=F('stock_quantity') * F('price')
+            ).aggregate(total_value=Sum('item_value'))['total_value'] or 0
+            inventory_by_size[size] = size_value
+        
+        # Calculate distributed value (items with employees) by category and size
+        distributed_by_category = {}
+        for category in categories:
+            category_items = TransactionItem.objects.filter(uniform__name=category).annotate(
+                remaining_quantity=F('quantity') - Sum(
+                    F('itemreturnrecord__returned_quantity'), 
+                    filter=Q(itemreturnrecord__isnull=False),
+                    default=0
+                ),
+                item_value=F('remaining_quantity') * F('uniform__price')
+            ).aggregate(total_value=Sum('item_value'))['total_value'] or 0
+            distributed_by_category[category] = category_items
+        
+        distributed_by_size = {}
+        for size in sizes:
+            size_items = TransactionItem.objects.filter(uniform__size=size).annotate(
+                remaining_quantity=F('quantity') - Sum(
+                    F('itemreturnrecord__returned_quantity'), 
+                    filter=Q(itemreturnrecord__isnull=False),
+                    default=0
+                ),
+                item_value=F('remaining_quantity') * F('uniform__price')
+            ).aggregate(total_value=Sum('item_value'))['total_value'] or 0
+            distributed_by_size[size] = size_items
+        
+        # Top 10 most valuable items in inventory
+        top_inventory_items = Uniform.objects.annotate(
+            item_value=F('stock_quantity') * F('price')
+        ).order_by('-item_value')[:10]
+        
+        # Top 10 most valuable items distributed to employees
+        top_distributed_uniforms = {}
+        for uniform in Uniform.objects.all():
+            uniform_value = TransactionItem.objects.filter(uniform=uniform).annotate(
+                remaining_quantity=F('quantity') - Sum(
+                    F('itemreturnrecord__returned_quantity'), 
+                    filter=Q(itemreturnrecord__isnull=False),
+                    default=0
+                ),
+                item_value=F('remaining_quantity') * F('uniform__price')
+            ).aggregate(total_value=Sum('item_value'))['total_value'] or 0
+            if uniform_value > 0:
+                top_distributed_uniforms[uniform] = uniform_value
+        
+        # Sort the dictionary and get top 10
+        top_distributed_items = sorted(top_distributed_uniforms.items(), key=lambda x: x[1], reverse=True)[:10]
+        
+        # Total values (same as dashboard)
+        inventory_value = Uniform.objects.annotate(
+            item_value=F('stock_quantity') * F('price')
+        ).aggregate(total_value=Sum('item_value'))['total_value'] or 0
+        
+        distributed_value = TransactionItem.objects.annotate(
+            remaining_quantity=F('quantity') - Sum(
+                F('itemreturnrecord__returned_quantity'), 
+                filter=Q(itemreturnrecord__isnull=False),
+                default=0
+            ),
+            item_value=F('remaining_quantity') * F('uniform__price')
+        ).aggregate(total_value=Sum('item_value'))['total_value'] or 0
+        
+        # Calculate damaged items value
+        damaged_value = Uniform.objects.annotate(
+            damaged_value=F('damaged_quantity') * F('price')
+        ).aggregate(total_damaged_value=Sum('damaged_value'))['total_damaged_value'] or 0
+        
+        # Damaged items by type
+        damage_types = dict(ItemReturnRecord.DAMAGE_TYPE_CHOICES)
+        damaged_by_type = {}
+        
+        for damage_code, damage_name in damage_types.items():
+            type_value = ItemReturnRecord.objects.filter(
+                damage_type=damage_code, 
+                damaged_quantity__gt=0
+            ).annotate(
+                item_value=F('damaged_quantity') * F('transaction_item__uniform__price')
+            ).aggregate(total_value=Sum('item_value'))['total_value'] or 0
+            
+            if type_value > 0:
+                damaged_by_type[damage_name] = type_value
+        
+        context.update({
+            'inventory_value': inventory_value,
+            'distributed_value': distributed_value,
+            'damaged_value': damaged_value,
+            'total_asset_value': inventory_value + distributed_value,
+            'inventory_by_category': sorted(inventory_by_category.items(), key=lambda x: x[1], reverse=True),
+            'inventory_by_size': sorted(inventory_by_size.items(), key=lambda x: x[1], reverse=True),
+            'distributed_by_category': sorted(distributed_by_category.items(), key=lambda x: x[1], reverse=True),
+            'distributed_by_size': sorted(distributed_by_size.items(), key=lambda x: x[1], reverse=True),
+            'top_inventory_items': top_inventory_items,
+            'top_distributed_items': top_distributed_items,
+            'damaged_by_type': sorted(damaged_by_type.items(), key=lambda x: x[1], reverse=True),
+        })
+        
+        return context

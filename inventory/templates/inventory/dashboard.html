@@ -576,19 +576,19 @@
           <div class="row mb-3">
             <!-- Damaged Items Value -->
             <div class="col-md-6">
-              <a href="{% url 'inventory:damaged_items_report' %}" class="text-decoration-none">
-                <div class="card financial-card h-100" style="border-left: 4px solid #dc3545 !important; transition: transform 0.2s;">
-                  <div class="card-body text-center">
-                    <div class="mb-3"><i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 2rem;"></i></div>
-                    <div class="financial-value text-danger">${{ damaged_value|floatformat:2 }}</div>
-                    <p class="financial-label">Damaged Item Value</p>
-                    <small class="text-muted">Items returned damaged</small>
-                    <div class="mt-2 small text-primary">
+              <div class="card financial-card h-100" style="border-left: 4px solid #dc3545 !important;">
+                <div class="card-body text-center">
+                  <div class="mb-3"><i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 2rem;"></i></div>
+                  <div class="financial-value text-danger">${{ damaged_value|floatformat:2 }}</div>
+                  <p class="financial-label">Damaged Item Value</p>
+                  <small class="text-muted">Items returned damaged</small>
+                  <div class="mt-3">
+                    <a href="{% url 'inventory:damaged_items_report' %}" class="btn btn-sm btn-outline-danger">
                       <i class="bi bi-eye"></i> View Details
-                    </div>
+                    </a>
                   </div>
                 </div>
-              </a>
+              </div>
             </div>
             
             <!-- Total Asset Value (moved to grid) -->
@@ -599,6 +599,11 @@
                   <div class="financial-value text-dark">${{ inventory_value|add:distributed_value|floatformat:2 }}</div>
                   <p class="financial-label">Total Asset Value</p>
                   <small class="text-muted">Excluding damaged items</small>
+                  <div class="mt-3">
+                    <a href="{% url 'inventory:asset_breakdown' %}" class="btn btn-sm btn-outline-dark">
+                      <i class="bi bi-bar-chart-fill"></i> View Breakdown
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
