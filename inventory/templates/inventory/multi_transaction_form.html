@@ -27,7 +27,7 @@
       <h4 class="mb-3">Transaction Details</h4>
       <div class="row g-3 mb-4">
         {% for field in form %}
-        {% if field.name != 'notes' %}
+        {% if field.name != 'notes' and field.name != 'is_prior_record' %}
         <div class="col-md-4">
           <div class="form-group">
             <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
@@ -66,6 +66,24 @@
             {{ form.notes }}
             <div class="form-text text-muted">
               Use this field to record serial numbers and any other important information about this transaction.
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="alert alert-info">
+            <div class="form-check form-switch">
+              <input type="checkbox" name="{{ form.is_prior_record.name }}" id="{{ form.is_prior_record.id_for_label }}" 
+                    class="form-check-input" role="switch"
+                    {% if form.is_prior_record.value %}checked{% endif %}>
+              <label class="ms-2 form-check-label" for="{{ form.is_prior_record.id_for_label }}">
+                <strong>{{ form.is_prior_record.label }}</strong>
+              </label>
+            </div>
+            <div class="form-text">
+              {{ form.is_prior_record.help_text }}
             </div>
           </div>
         </div>

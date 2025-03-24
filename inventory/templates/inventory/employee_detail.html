@@ -203,6 +203,7 @@
               <td rowspan="{{ transaction.items.count }}">
                 {{ transaction.get_payment_option_display }}
                 {% if transaction.loaned %}<span class="badge bg-warning">Loaned</span>{% endif %}
+                {% if transaction.is_prior_record %}<span class="badge bg-secondary">Prior Record</span>{% endif %}
               </td>
               {% endif %}
               <td>{{ item.uniform.name }}</td>

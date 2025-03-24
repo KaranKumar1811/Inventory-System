@@ -48,6 +48,10 @@ class Uniform(models.Model):
         """Returns the number of items that are usable (not damaged)."""
         return self.stock_quantity - self.damaged_quantity
     
+    def total_value(self):
+        """Calculate the total value of this uniform in inventory."""
+        return self.stock_quantity * self.price
+    
     class Meta:
         unique_together = ('name', 'size')
 
@@ -67,6 +71,9 @@ class Transaction(models.Model):
     loaned = models.BooleanField(default=False)
     returned = models.BooleanField(default=False)
     return_date = models.DateTimeField(null=True, blank=True)
+    is_prior_record = models.BooleanField(default=False, 
+                                    help_text="Mark as 'Prior Record' for transactions that occurred before system implementation. "
+                                          "These records will be included in financial calculations but won't affect current inventory levels.")
     
     @property
     def total_returned(self):
@@ -114,6 +121,9 @@ class MultiItemTransaction(models.Model):
     returned = models.BooleanField(default=False)
     return_date = models.DateTimeField(null=True, blank=True)
     notes = models.TextField(blank=True, null=True, help_text="Transaction notes, including serial numbers for items")
+    is_prior_record = models.BooleanField(default=False, 
+                                      help_text="Mark as 'Prior Record' for transactions that occurred before system implementation. "
+                                          "These records will be included in financial calculations but won't affect current inventory levels.")
     
     def total_cost(self):
         """Calculate the total cost of all items in this transaction."""

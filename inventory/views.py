@@ -300,27 +300,37 @@ class MultiItemTransactionCreateView(LoginRequiredMixin, UserPassesTestMixin, Fo
             item_formset.instance = transaction
             item_formset.save()
             
-            # Update stock quantities for each uniform
+            # Check if this is a prior record - we'll still record it but not reduce inventory
+            is_prior_record = form.cleaned_data.get('is_prior_record', False)
+            
+            # Update stock quantities for each uniform only if not a prior record
             for item_form in item_formset:
                 if item_form.cleaned_data and not item_form.cleaned_data.get('DELETE', False):
                     uniform = item_form.cleaned_data['uniform']
                     quantity = item_form.cleaned_data['quantity']
                     
-                    # Check if there's enough stock
-                    if uniform.stock_quantity < quantity:
-                        messages.error(self.request, f'Not enough {uniform.name} in stock. Available: {uniform.stock_quantity}')
-                        # Delete the transaction since we can't fulfill it
-                        transaction.delete()
-                        return self.form_invalid(form)
-                    
-                    # Reduce the stock quantity
-                    uniform.stock_quantity -= quantity
-                    uniform.save()
+                    # Only check inventory and reduce stock for new transactions, not prior records
+                    if not is_prior_record:
+                        # Check if there's enough stock
+                        if uniform.stock_quantity < quantity:
+                            messages.error(self.request, f'Not enough {uniform.name} in stock. Available: {uniform.stock_quantity}')
+                            # Delete the transaction since we can't fulfill it
+                            transaction.delete()
+                            return self.form_invalid(form)
+                        
+                        # Reduce the stock quantity
+                        uniform.stock_quantity -= quantity
+                        uniform.save()
             
             # Create a more descriptive success message
             employee = transaction.employee
             employee_name = f"{employee.first_name} {employee.last_name}" if employee.first_name and employee.last_name else employee.employee_id
-            messages.success(self.request, f'Transaction for {employee_name} created successfully.')
+            
+            if is_prior_record:
+                messages.success(self.request, f'Prior record for {employee_name} created successfully. Inventory not affected.')
+            else:
+                messages.success(self.request, f'Transaction for {employee_name} created successfully.')
+            
             return super().form_valid(form)
         else:
             return self.form_invalid(form)

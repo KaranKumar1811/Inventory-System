@@ -242,6 +242,9 @@
                         {% if transaction.loaned %}
                             <span class="loaned-tag">Loaned</span>
                         {% endif %}
+                        {% if transaction.is_prior_record %}
+                            <span class="loaned-tag" style="background-color: #6c757d;">Prior Record</span>
+                        {% endif %}
                     {% endif %}
                 </td>
                 <td class="transaction-header-right">

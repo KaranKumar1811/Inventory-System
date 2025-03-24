@@ -112,7 +112,7 @@ class MultiItemTransactionForm(forms.ModelForm):
     
     class Meta:
         model = MultiItemTransaction
-        fields = ['employee', 'payment_option', 'loaned', 'notes']
+        fields = ['employee', 'payment_option', 'loaned', 'notes', 'is_prior_record']
         widgets = {
             'employee': forms.Select(attrs={
                 'class': 'form-select',
@@ -128,6 +128,17 @@ class MultiItemTransactionForm(forms.ModelForm):
                 'rows': 3,
                 'placeholder': 'Enter transaction notes, including serial numbers for items'
             }),
+            'is_prior_record': forms.CheckboxInput(attrs={
+                'class': 'form-check-input',
+                'role': 'switch',
+                'aria-checked': 'false'
+            }),
+        }
+        labels = {
+            'is_prior_record': 'Prior Record',
+        }
+        help_texts = {
+            'is_prior_record': 'Check this box for uniforms issued before implementation of this system.'
         }
     
     def __init__(self, *args, **kwargs):
