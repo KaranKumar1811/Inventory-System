@@ -677,6 +677,12 @@
                   </span>
                 {% endif %}
                 
+                {% if transaction.is_prior_record %}
+                  <span class="badge bg-secondary text-white" style="padding: 6px 10px; margin-bottom: 8px; margin-left: 5px;">
+                    <i class="bi bi-clock-history me-1"></i>Prior Record
+                  </span>
+                {% endif %}
+                
                 <div class="transaction-items mt-2">
                   <ul class="list-unstyled mb-1" style="font-size: 0.9rem;">
                     {% for item in transaction.items.all %}
