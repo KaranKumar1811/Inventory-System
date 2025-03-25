@@ -99,16 +99,22 @@
             <div class="item-form mb-3 p-3 rounded {% if not forloop.first %}mt-3{% endif %}" id="item-{{ forloop.counter0 }}" style="background-color: #ffffff !important;">
               <div class="row g-3">
                 <div class="col-md-5">
-                  <label for="{{ item_form.uniform.id_for_label }}" class="form-label">Uniform</label>
-                  {{ item_form.uniform.errors }}
-                  {{ item_form.uniform }}
+                  <label for="{{ item_form.uniform_type.id_for_label }}" class="form-label">Uniform Type</label>
+                  {{ item_form.uniform_type.errors }}
+                  {{ item_form.uniform_type }}
                 </div>
                 <div class="col-md-3">
+                  <label for="{{ item_form.size.id_for_label }}" class="form-label">Size</label>
+                  {{ item_form.size.errors }}
+                  {{ item_form.size }}
+                </div>
+                <div class="col-md-2">
                   <label for="{{ item_form.quantity.id_for_label }}" class="form-label">Quantity</label>
                   {{ item_form.quantity.errors }}
                   {{ item_form.quantity }}
+                  <div class="stock-info mt-1" style="display: none;"></div>
                 </div>
-                <div class="col-md-4 d-flex align-items-end">
+                <div class="col-md-2 d-flex align-items-end">
                   {% if item_form.instance.pk %}{{ item_form.DELETE }}{% endif %}
                   <button type="button" class="btn btn-danger remove-form"{% if forloop.first and item_formset|length == 1 %} style="display:none"{% endif %}>
                     <i class="bi bi-trash"></i> Remove
@@ -116,8 +122,10 @@
                 </div>
               </div>
               
+              <!-- Hidden fields -->
+              {{ item_form.uniform }}
               {% for field in item_form.hidden_fields %}
-              {{ field }}
+                {% if field.name != 'uniform' %}{{ field }}{% endif %}
               {% endfor %}
             </div>
             {% endfor %}
@@ -218,6 +226,113 @@
     document.querySelectorAll('.item-form select[id$="-uniform"]').forEach(select => {
       if (select.value) {
         selectedUniforms.add(select.value);
+      }
+    });
+    
+    // Function to populate size dropdown based on uniform type
+    function populateSizeDropdown(uniformTypeSelect) {
+      const formRow = uniformTypeSelect.closest('.item-form');
+      const sizeSelect = formRow.querySelector('select[id$="-size"]');
+      const uniformIdField = formRow.querySelector('input[id$="-uniform"]');
+      
+      // Clear the size dropdown
+      sizeSelect.innerHTML = '<option value="">Select size</option>';
+      
+      // Reset the uniform ID field
+      if (uniformIdField) {
+        uniformIdField.value = '';
+      }
+      
+      // If no uniform type is selected, just return
+      if (!uniformTypeSelect.value) {
+        return;
+      }
+      
+      // Fetch sizes for the selected uniform type
+      fetch(`/inventory/api/uniform-types/${uniformTypeSelect.value}/sizes/`)
+        .then(response => response.json())
+        .then(data => {
+          // Add size options to the dropdown
+          data.sizes.forEach(size => {
+            const option = document.createElement('option');
+            option.value = size.id; // This is now the size string itself
+            option.textContent = size.name;
+            sizeSelect.appendChild(option);
+          });
+          
+          // Enable the size dropdown
+          sizeSelect.disabled = false;
+        })
+        .catch(error => {
+          console.error('Error fetching sizes:', error);
+        });
+    }
+    
+    // Function to update uniform ID when size is selected
+    function handleSizeChange(sizeSelect) {
+      const formRow = sizeSelect.closest('.item-form');
+      const uniformTypeSelect = formRow.querySelector('select[id$="-uniform_type"]');
+      const uniformIdField = formRow.querySelector('input[id$="-uniform"]');
+      const stockInfoDiv = formRow.querySelector('.stock-info');
+      
+      // If no size is selected, clear the uniform ID
+      if (!sizeSelect.value || !uniformTypeSelect.value) {
+        if (uniformIdField) {
+          uniformIdField.value = '';
+        }
+        if (stockInfoDiv) {
+          stockInfoDiv.style.display = 'none';
+        }
+        return;
+      }
+      
+      // Fetch uniform based on type and size
+      fetch(`/inventory/api/uniforms/by-type-size/?type_id=${uniformTypeSelect.value}&size_id=${sizeSelect.value}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.uniform) {
+            // Set the uniform ID
+            uniformIdField.value = data.uniform.id;
+            
+            // Update stock info
+            if (stockInfoDiv) {
+              stockInfoDiv.textContent = `Available Stock: ${data.uniform.stock_quantity} items`;
+              stockInfoDiv.style.display = 'block';
+              
+              if (data.uniform.stock_quantity <= 5) {
+                stockInfoDiv.classList.add('low-stock');
+              } else {
+                stockInfoDiv.classList.remove('low-stock');
+              }
+            }
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching uniform:', error);
+        });
+    }
+    
+    // Add event listeners to uniform type selects
+    document.querySelectorAll('.item-form select[id$="-uniform_type"]').forEach(select => {
+      select.addEventListener('change', () => {
+        populateSizeDropdown(select);
+      });
+      
+      // Initialize if a value is already selected
+      if (select.value) {
+        populateSizeDropdown(select);
+      }
+    });
+    
+    // Add event listeners to size selects
+    document.querySelectorAll('.item-form select[id$="-size"]').forEach(select => {
+      select.addEventListener('change', () => {
+        handleSizeChange(select);
+      });
+      
+      // Initialize if a value is already selected
+      if (select.value) {
+        handleSizeChange(select);
       }
     });
     
@@ -340,6 +455,10 @@
             if (input.id.endsWith('-uniform')) {
               input.addEventListener('change', () => handleUniformChange(input));
               input.removeAttribute('data-previous-value');
+            } else if (input.id.endsWith('-uniform_type')) {
+              input.addEventListener('change', () => populateSizeDropdown(input));
+            } else if (input.id.endsWith('-size')) {
+              input.addEventListener('change', () => handleSizeChange(input));
             }
           } else if (input.tagName === 'INPUT') {
             // Clear text/number inputs
@@ -399,7 +518,7 @@
         }
       }
     });
-
+    
     // Toggle switch functionality for loaned checkbox
     const loanedCheckbox = document.querySelector('input[name="loaned"]');
     const loanedLabel = document.getElementById('loaned-label');

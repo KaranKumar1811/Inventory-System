@@ -29,7 +29,12 @@ from .views import (
     # Employee archiving
     toggle_employee_archive,
     uniform_stock_api,
+    uniform_type_sizes_api,
+    uniform_by_type_size_api,
     AssetBreakdownView,
+    UniformWithSizesCreateView,
+    UniformSizeListView,
+    UniformSizeCreateView,
 )
 from django.views.generic import TemplateView
 
@@ -83,9 +88,17 @@ urlpatterns = [
     path('uniforms/import/', import_uniforms, name='import_uniforms'),
     path('uniforms/template/', export_uniform_template, name='export_uniform_template'),
     
-    # Add a new URL pattern for the uniform stock API
+    # API Routes
     path('api/uniform/<int:uniform_id>/stock/', uniform_stock_api, name='uniform_stock_api'),
+    path('api/uniform-types/<int:type_id>/sizes/', uniform_type_sizes_api, name='uniform_type_sizes_api'),
+    path('api/uniforms/by-type-size/', uniform_by_type_size_api, name='uniform_by_type_size_api'),
+    
     path('asset-breakdown/', AssetBreakdownView.as_view(), name='asset_breakdown'),
+    
+    # Uniform with sizes URLs
+    path('uniforms/add-with-sizes/', UniformWithSizesCreateView.as_view(), name='uniform_add_with_sizes'),
+    path('uniform-sizes/', UniformSizeListView.as_view(), name='uniform_sizes'),
+    path('uniform-sizes/add/', UniformSizeCreateView.as_view(), name='uniform_size_add'),
 ]
 
 

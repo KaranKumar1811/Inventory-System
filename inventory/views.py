@@ -2,14 +2,14 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import ListView, DetailView, CreateView, TemplateView, FormView
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from .models import Employee, Uniform, Transaction, ReturnRecord, TransactionItem, MultiItemTransaction, ItemReturnRecord
+from .models import Employee, Uniform, Transaction, ReturnRecord, TransactionItem, MultiItemTransaction, ItemReturnRecord, UniformType, UniformSize
 from django.http import HttpResponse, JsonResponse
 from django.template.loader import get_template
 import io
 from xhtml2pdf import pisa
 from django.utils import timezone
 from django.db.models import Sum, Count, Q, F
-from .forms import ReturnTransactionForm, MultiItemTransactionForm, TransactionItemFormSet, SearchForm, CustomUserCreationForm, UserRoleForm, ImportFileForm
+from .forms import ReturnTransactionForm, MultiItemTransactionForm, TransactionItemFormSet, SearchForm, CustomUserCreationForm, UserRoleForm, ImportFileForm, UniformWithSizesForm, UniformSizeForm
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.generic.edit import FormView, UpdateView
@@ -20,6 +20,7 @@ from django.db import transaction, IntegrityError
 import os
 from django.conf import settings
 import base64
+from django.views.decorators.http import require_GET
 
 # --- Search View ---
 class SearchView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
@@ -296,6 +297,43 @@ class MultiItemTransactionCreateView(LoginRequiredMixin, UserPassesTestMixin, Fo
             transaction = form.save(commit=False)
             transaction.save()
             
+            # Process each form to ensure uniforms are correctly selected
+            for item_form in item_formset:
+                # Skip deleted forms
+                if item_form.cleaned_data and not item_form.cleaned_data.get('DELETE', False):
+                    uniform_id = item_form.cleaned_data.get('uniform')
+                    
+                    # Check if uniform_id is already a Uniform object
+                    if uniform_id and not isinstance(uniform_id, Uniform):
+                        try:
+                            # Get the actual Uniform object
+                            uniform = Uniform.objects.get(pk=uniform_id)
+                            # Set the uniform instance on the form
+                            item_form.instance.uniform = uniform
+                        except Uniform.DoesNotExist:
+                            # No matching uniform found - invalid form
+                            item_form.add_error('uniform_type', 'No uniform found with this ID')
+                            return self.form_invalid(form)
+                    elif uniform_id and isinstance(uniform_id, Uniform):
+                        # If it's already a Uniform object, use it directly
+                        item_form.instance.uniform = uniform_id
+                    # If no uniform ID provided directly, try to find by type and size
+                    elif not item_form.instance.uniform:
+                        # Get type and size from form
+                        uniform_type = item_form.cleaned_data.get('uniform_type')
+                        size = item_form.cleaned_data.get('size')
+                        
+                        if uniform_type and size:
+                            try:
+                                # Find the uniform by type and size
+                                uniform = Uniform.objects.get(uniform_type=uniform_type, size=size)
+                                # Set the uniform in the cleaned data
+                                item_form.instance.uniform = uniform
+                            except Uniform.DoesNotExist:
+                                # No matching uniform found - invalid form
+                                item_form.add_error('uniform_type', 'No uniform found for this type and size')
+                                return self.form_invalid(form)
+            
             # Now, save the formset
             item_formset.instance = transaction
             item_formset.save()
@@ -306,14 +344,14 @@ class MultiItemTransactionCreateView(LoginRequiredMixin, UserPassesTestMixin, Fo
             # Update stock quantities for each uniform only if not a prior record
             for item_form in item_formset:
                 if item_form.cleaned_data and not item_form.cleaned_data.get('DELETE', False):
-                    uniform = item_form.cleaned_data['uniform']
+                    uniform = item_form.instance.uniform  # Get the uniform from the saved instance
                     quantity = item_form.cleaned_data['quantity']
                     
                     # Only check inventory and reduce stock for new transactions, not prior records
                     if not is_prior_record:
                         # Check if there's enough stock
                         if uniform.stock_quantity < quantity:
-                            messages.error(self.request, f'Not enough {uniform.name} in stock. Available: {uniform.stock_quantity}')
+                            messages.error(self.request, f'Not enough {uniform} in stock. Available: {uniform.stock_quantity}')
                             # Delete the transaction since we can't fulfill it
                             transaction.delete()
                             return self.form_invalid(form)
@@ -851,7 +889,7 @@ def import_uniforms(request):
                 df = pd.read_excel(excel_file)
                 
                 # Validate required columns
-                required_columns = ['name', 'size', 'price', 'stock_quantity']
+                required_columns = ['uniform_type', 'size', 'price', 'stock_quantity']
                 for column in required_columns:
                     if column not in df.columns:
                         messages.error(request, f"Missing required column: {column}")
@@ -867,11 +905,11 @@ def import_uniforms(request):
                     for index, row in df.iterrows():
                         try:
                             # Extract data from the row
-                            name = str(row['name']).strip()
+                            uniform_type_name = str(row['uniform_type']).strip() 
                             size = str(row['size']).strip()
                             
                             # Skip blank rows
-                            if not name or not size:
+                            if not uniform_type_name or not size:
                                 continue
                             
                             # Convert price and quantities to correct types
@@ -884,14 +922,21 @@ def import_uniforms(request):
                                 errors.append(f"Row {index+2}: Invalid numeric values")
                                 continue
                             
+                            # Get or create the uniform type
+                            uniform_type_obj, created = UniformType.objects.get_or_create(
+                                name=uniform_type_name,
+                                defaults={'description': row.get('description', '')}
+                            )
+                            
                             # Check if uniform already exists
                             uniform, created = Uniform.objects.update_or_create(
-                                name=name,
+                                name=uniform_type_obj.name,
                                 size=size,
                                 defaults={
                                     'price': price,
                                     'stock_quantity': stock_quantity,
-                                    'damaged_quantity': damaged_quantity
+                                    'damaged_quantity': damaged_quantity,
+                                    'uniform_type': uniform_type_obj
                                 }
                             )
                             
@@ -903,7 +948,7 @@ def import_uniforms(request):
                                 
                         except IntegrityError:
                             error_count += 1
-                            errors.append(f"Row {index+2}: Duplicate entry for {name} - {size}")
+                            errors.append(f"Row {index+2}: Duplicate entry for {uniform_type_name} - {size}")
                         except Exception as e:
                             error_count += 1
                             errors.append(f"Row {index+2}: {str(e)}")
@@ -956,12 +1001,13 @@ def export_employee_template(request):
 def export_uniform_template(request):
     """Generate a template Excel file for uniform imports."""
     # Create a DataFrame with the column headers
-    df = pd.DataFrame(columns=['name', 'size', 'price', 'stock_quantity', 'damaged_quantity'])
+    df = pd.DataFrame(columns=['uniform_type', 'size', 'price', 'stock_quantity', 'damaged_quantity', 'description'])
     
     # Add sample data
     sample_data = [
-        {'name': 'Shirt', 'size': 'M', 'price': 25.99, 'stock_quantity': 50, 'damaged_quantity': 0},
-        {'name': 'Pants', 'size': 'L', 'price': 35.50, 'stock_quantity': 30, 'damaged_quantity': 2}
+        {'uniform_type': 'Long Sleeve Shirt', 'size': 'Medium', 'price': 25.99, 'stock_quantity': 50, 'damaged_quantity': 0, 'description': 'Standard long sleeve uniform shirt'},
+        {'uniform_type': 'Long Sleeve Shirt', 'size': 'Large', 'price': 25.99, 'stock_quantity': 40, 'damaged_quantity': 0, 'description': 'Standard long sleeve uniform shirt'},
+        {'uniform_type': 'Pants', 'size': 'Medium', 'price': 35.50, 'stock_quantity': 30, 'damaged_quantity': 2, 'description': 'Standard uniform pants'}
     ]
     df = pd.concat([df, pd.DataFrame(sample_data)], ignore_index=True)
     
@@ -972,6 +1018,40 @@ def export_uniform_template(request):
     # Write the DataFrame to the response
     with pd.ExcelWriter(response, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Uniforms')
+        
+        # Access the workbook
+        workbook = writer.book
+        worksheet = writer.sheets['Uniforms']
+        
+        # Add instructions
+        instructions_sheet = workbook.create_sheet('Instructions')
+        instructions = [
+            ['Uniform Import Instructions:'],
+            [''],
+            ['Required Fields:'],
+            ['1. uniform_type: The type of uniform (e.g., "Long Sleeve Shirt", "Pants")'],
+            ['2. size: The size of the uniform (e.g., "Small", "Medium", "Large")'],
+            ['3. price: The price of the uniform item (numeric value)'],
+            ['4. stock_quantity: The quantity in stock (integer)'],
+            [''],
+            ['Optional Fields:'],
+            ['5. damaged_quantity: The quantity that is damaged (integer, optional)'],
+            ['6. description: A description of the uniform type (optional)'],
+            [''],
+            ['Multiple Sizes:'],
+            ['- You can import multiple sizes of the same uniform type (see example in the template)'],
+            ['- Each size should be on a separate row with the same uniform_type'],
+            ['- The price can be the same or different for each size'],
+            ['- The description will be applied to the uniform type and shared across all sizes'],
+            [''],
+            ['Notes:'],
+            ['- New uniform types will be created automatically if they don\'t exist'],
+            ['- Existing uniforms will be updated if they match the type and size']
+        ]
+        
+        for i, row in enumerate(instructions):
+            for j, value in enumerate(row):
+                instructions_sheet.cell(row=i+1, column=j+1, value=value)
     
     return response
 
@@ -1007,18 +1087,70 @@ def toggle_employee_archive(request, pk):
         'employee': employee
     })
 
-@login_required
+@require_GET
 def uniform_stock_api(request, uniform_id):
-    """API endpoint to get the stock quantity of a uniform."""
+    """
+    API endpoint to get stock quantity for a uniform.
+    """
+    uniform = get_object_or_404(Uniform, id=uniform_id)
+    return JsonResponse({
+        'stock_quantity': uniform.stock_quantity,
+        'id': uniform.id,
+        'name': str(uniform)
+    })
+
+@require_GET
+def uniform_type_sizes_api(request, type_id):
+    """
+    API endpoint to get all sizes available for a uniform type.
+    """
+    uniform_type = get_object_or_404(UniformType, id=type_id)
+    
+    # Get all sizes that are available for this uniform type
+    sizes = []
+    uniforms = Uniform.objects.filter(uniform_type=uniform_type)
+    for uniform in uniforms:
+        if uniform.size and uniform.size not in [s['name'] for s in sizes]:
+            sizes.append({
+                'id': uniform.size,  # Use the size string as the ID
+                'name': uniform.size
+            })
+    
+    return JsonResponse({
+        'type_id': uniform_type.id,
+        'type_name': uniform_type.name,
+        'sizes': sizes
+    })
+
+@require_GET
+def uniform_by_type_size_api(request):
+    """
+    API endpoint to get a uniform by type and size.
+    """
+    type_id = request.GET.get('type_id')
+    size = request.GET.get('size_id')  # This is actually the size string, not an ID
+    
+    if not type_id or not size:
+        return JsonResponse({'error': 'Both type_id and size_id are required'}, status=400)
+    
     try:
-        uniform = Uniform.objects.get(pk=uniform_id)
-        return JsonResponse({
-            'stock_quantity': uniform.stock_quantity,
-            'usable_quantity': uniform.usable_quantity,
-            'damaged_quantity': uniform.damaged_quantity
-        })
-    except Uniform.DoesNotExist:
-        return JsonResponse({'error': 'Uniform not found'}, status=404)
+        uniform_type = UniformType.objects.get(id=type_id)
+        
+        try:
+            uniform = Uniform.objects.get(uniform_type=uniform_type, size=size)
+            return JsonResponse({
+                'uniform': {
+                    'id': uniform.id,
+                    'name': str(uniform),
+                    'stock_quantity': uniform.stock_quantity,
+                    'price': str(uniform.price)
+                }
+            })
+        except Uniform.DoesNotExist:
+            return JsonResponse({'error': 'No uniform found with this type and size'}, status=404)
+            
+    except UniformType.DoesNotExist:
+        return JsonResponse({'error': 'Invalid type ID'}, status=404)
 
 # --- Asset Breakdown View ---
 class AssetBreakdownView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
@@ -1148,3 +1280,109 @@ class AssetBreakdownView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         })
         
         return context
+
+# --- Uniform with Multiple Sizes View ---
+class UniformWithSizesCreateView(LoginRequiredMixin, UserPassesTestMixin, FormView):
+    template_name = 'inventory/uniform_with_sizes_form.html'
+    form_class = UniformWithSizesForm
+    success_url = reverse_lazy('inventory:uniform_list')
+    
+    def test_func(self):
+        return self.request.user.is_staff or self.request.user.is_superuser
+    
+    def form_valid(self, form):
+        # Get or create the uniform type
+        uniform_type = None
+        if form.cleaned_data.get('uniform_type'):
+            uniform_type = form.cleaned_data['uniform_type']
+        elif form.cleaned_data.get('new_uniform_type'):
+            # Create a new uniform type
+            try:
+                # Check if a uniform type with this name already exists
+                uniform_type = UniformType.objects.get(name=form.cleaned_data['new_uniform_type'])
+                messages.info(
+                    self.request,
+                    f'Using existing uniform type "{uniform_type.name}"'
+                )
+            except UniformType.DoesNotExist:
+                uniform_type = UniformType.objects.create(
+                    name=form.cleaned_data['new_uniform_type'],
+                    description=form.cleaned_data.get('description', '')
+                )
+                messages.success(
+                    self.request,
+                    f'Created new uniform type "{uniform_type.name}"'
+                )
+        
+        price = form.cleaned_data['price']
+        sizes = UniformSize.objects.all()
+        
+        # Create a uniform for each size with quantity > 0
+        uniforms_created = 0
+        for size in sizes:
+            quantity = form.cleaned_data.get(f'quantity_{size.id}', 0)
+            if quantity > 0:
+                # Check if this uniform already exists
+                try:
+                    uniform = Uniform.objects.get(name=uniform_type.name, size=size.name)
+                    # Update existing uniform
+                    uniform.price = price
+                    uniform.stock_quantity += quantity
+                    uniform.uniform_type = uniform_type
+                    uniform.save()
+                    messages.success(
+                        self.request, 
+                        f'Updated existing {uniform.name} - {uniform.size} (added {quantity} to stock)'
+                    )
+                except Uniform.DoesNotExist:
+                    # Create new uniform
+                    uniform = Uniform.objects.create(
+                        name=uniform_type.name,
+                        size=size.name,
+                        price=price,
+                        stock_quantity=quantity,
+                        uniform_type=uniform_type
+                    )
+                    messages.success(
+                        self.request, 
+                        f'Created new {uniform.name} - {uniform.size} with {quantity} in stock'
+                    )
+                uniforms_created += 1
+        
+        if uniforms_created > 0:
+            messages.success(
+                self.request, 
+                f'Successfully added/updated {uniforms_created} uniform items with different sizes'
+            )
+        else:
+            messages.warning(self.request, 'No uniforms were created or updated. Please specify quantities.')
+            return self.form_invalid(form)
+            
+        return super().form_valid(form)
+
+# --- Uniform Size Management View ---
+class UniformSizeListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
+    model = UniformSize
+    template_name = 'inventory/uniform_size_list.html'
+    context_object_name = 'sizes'
+    
+    def test_func(self):
+        return self.request.user.is_staff or self.request.user.is_superuser
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['form'] = UniformSizeForm()
+        return context
+
+class UniformSizeCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
+    model = UniformSize
+    form_class = UniformSizeForm
+    template_name = 'inventory/uniform_size_form.html'
+    success_url = reverse_lazy('inventory:uniform_sizes')
+    
+    def test_func(self):
+        return self.request.user.is_staff or self.request.user.is_superuser
+    
+    def form_valid(self, form):
+        messages.success(self.request, f'Size "{form.instance.name}" created successfully')
+        return super().form_valid(form)

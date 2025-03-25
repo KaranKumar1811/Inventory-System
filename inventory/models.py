@@ -33,7 +33,37 @@ class Employee(models.Model):
         
         return regular_balance + multi_balance
 
+class UniformType(models.Model):
+    """Model to represent uniform types (categories) like 'Long Sleeve Shirts'"""
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return self.name
+    
+    def total_stock_value(self):
+        """Calculate the total value of all uniforms of this type in stock"""
+        return sum(uniform.total_value() for uniform in self.uniforms.all())
+    
+    def total_stock_quantity(self):
+        """Calculate the total quantity of all uniforms of this type in stock"""
+        return sum(uniform.stock_quantity for uniform in self.uniforms.all())
+
+class UniformSize(models.Model):
+    """Model to represent standard sizes for uniforms"""
+    name = models.CharField(max_length=20, unique=True)
+    display_order = models.PositiveIntegerField(default=0, help_text="Order to display sizes in (smaller numbers first)")
+    
+    def __str__(self):
+        return self.name
+    
+    class Meta:
+        ordering = ['display_order', 'name']
+
 class Uniform(models.Model):
+    uniform_type = models.ForeignKey(UniformType, on_delete=models.CASCADE, related_name='uniforms', null=True)
     name = models.CharField(max_length=100)
     size = models.CharField(max_length=20)
     price = models.DecimalField(max_digits=6, decimal_places=2)

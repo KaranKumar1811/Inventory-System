@@ -1,11 +1,12 @@
 from django import forms
-from django.forms import inlineformset_factory
-from .models import Transaction, MultiItemTransaction, TransactionItem, Employee, Uniform, ReturnRecord
+from django.forms import inlineformset_factory, formset_factory
+from .models import Transaction, MultiItemTransaction, TransactionItem, Employee, Uniform, ReturnRecord, UniformType, UniformSize
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User, Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django.core.validators import FileExtensionValidator
+from django.core.exceptions import ValidationError
 
 class SearchForm(forms.Form):
     query = forms.CharField(
@@ -107,7 +108,11 @@ class MultiItemTransactionForm(forms.ModelForm):
     payment_option = forms.ChoiceField(
         choices=[('', 'Select payment method')] + list(MultiItemTransaction.PAYMENT_OPTIONS),
         required=True,
-        widget=forms.Select(attrs={'class': 'form-select'})
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        error_messages={
+            'required': 'Please select a payment method',
+            'invalid_choice': 'Please select a valid payment method'
+        }
     )
     
     class Meta:
@@ -140,6 +145,12 @@ class MultiItemTransactionForm(forms.ModelForm):
         help_texts = {
             'is_prior_record': 'Check this box for uniforms issued before implementation of this system.'
         }
+        error_messages = {
+            'employee': {
+                'required': 'Please select an employee',
+                'invalid_choice': 'Please select a valid employee'
+            }
+        }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -151,31 +162,78 @@ class MultiItemTransactionForm(forms.ModelForm):
             self.fields['payment_option'].initial = self.instance.payment_option
 
 class TransactionItemForm(forms.ModelForm):
+    """Form for TransactionItem model."""
+    
+    uniform_type = forms.ModelChoiceField(
+        queryset=UniformType.objects.all().order_by('name'),
+        required=False,
+        empty_label="Select uniform type",
+        widget=forms.Select(attrs={'class': 'form-control uniform-type-select'})
+    )
+    
+    # Change from ChoiceField to CharField to avoid choices validation
+    size = forms.CharField(
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control size-select'})
+    )
+    
+    # Hidden field to store the uniform ID
+    uniform = forms.IntegerField(
+        required=False,
+        widget=forms.HiddenInput(),
+    )
+    
     class Meta:
         model = TransactionItem
         fields = ['uniform', 'quantity']
         widgets = {
-            'uniform': forms.Select(attrs={
-                'class': 'form-select',
-                'placeholder': 'Select a uniform'
-            }),
-            'quantity': forms.NumberInput(attrs={
-                'class': 'form-control', 
-                'min': '1'
-            }),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': '1', 'value': '1'}),
         }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Add better empty label for uniform dropdown
-        self.fields['uniform'].empty_label = "Select a uniform"
+        
+        # If we're editing an existing transaction item
+        if self.instance and self.instance.pk and self.instance.uniform:
+            uniform = self.instance.uniform
+            self.fields['uniform_type'].initial = uniform.uniform_type
+            self.fields['size'].initial = uniform.size
+            self.fields['uniform'].initial = uniform.id
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        uniform_id = cleaned_data.get('uniform')
+        
+        # If we have a uniform ID, convert it to a Uniform object
+        if uniform_id:
+            try:
+                uniform = Uniform.objects.get(id=uniform_id)
+                # Replace the ID with the actual Uniform object
+                cleaned_data['uniform'] = uniform
+            except Uniform.DoesNotExist:
+                raise ValidationError("The selected uniform does not exist.")
+        else:
+            # Try to find the uniform by type and size
+            uniform_type = cleaned_data.get('uniform_type')
+            size = cleaned_data.get('size')
+            
+            if uniform_type and size:
+                try:
+                    uniform = Uniform.objects.get(uniform_type=uniform_type, size=size)
+                    cleaned_data['uniform'] = uniform
+                except Uniform.DoesNotExist:
+                    raise ValidationError("No uniform found with this type and size.")
+            else:
+                raise ValidationError("Please select a uniform type and size.")
+        
+        return cleaned_data
 
 # Create a formset for multiple TransactionItems
 TransactionItemFormSet = inlineformset_factory(
     MultiItemTransaction, 
     TransactionItem,
     form=TransactionItemForm,
-    extra=0,  # Number of empty forms to display (changed from 1 to 0)
+    extra=0,  # Number of empty forms to display
     can_delete=True,
     min_num=1,  # Require at least one item
     validate_min=True
@@ -286,3 +344,108 @@ class ImportFileForm(forms.Form):
             if not file.name.endswith(('.xlsx', '.xls')):
                 raise forms.ValidationError('Unsupported file format. Please upload an Excel file (.xlsx, .xls).')
         return file
+
+class UniformTypeForm(forms.ModelForm):
+    class Meta:
+        model = UniformType
+        fields = ['name', 'description']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+class UniformSizeForm(forms.ModelForm):
+    class Meta:
+        model = UniformSize
+        fields = ['name', 'display_order']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'display_order': forms.NumberInput(attrs={'class': 'form-control'}),
+        }
+
+class UniformWithSizesForm(forms.Form):
+    uniform_type = forms.ModelChoiceField(
+        queryset=UniformType.objects.all(),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        empty_label="Select a uniform type or enter a new one"
+    )
+    new_uniform_type = forms.CharField(
+        max_length=100, 
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Or enter a new uniform type name'
+        })
+    )
+    description = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 3,
+            'placeholder': 'Description (optional)'
+        }),
+        required=False
+    )
+    price = forms.DecimalField(
+        max_digits=6, 
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01',
+            'placeholder': 'Price for all sizes'
+        })
+    )
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Dynamically add size fields based on available sizes
+        sizes = UniformSize.objects.all()
+        if not sizes.exists():
+            # Create default sizes if none exist
+            default_sizes = [
+                ('Small', 1),
+                ('Medium', 2),
+                ('Large', 3),
+                ('X-Large', 4),
+                ('2XL', 5),
+                ('3XL', 6),
+            ]
+            for size_name, display_order in default_sizes:
+                UniformSize.objects.create(name=size_name, display_order=display_order)
+            sizes = UniformSize.objects.all()
+            
+        # Add fields for each size
+        for size in sizes:
+            self.fields[f'quantity_{size.id}'] = forms.IntegerField(
+                required=False,
+                min_value=0,
+                initial=0,
+                label=f"{size.name} Quantity",
+                widget=forms.NumberInput(attrs={
+                    'class': 'form-control size-quantity',
+                    'placeholder': f'Quantity for {size.name}'
+                })
+            )
+            
+    def clean(self):
+        cleaned_data = super().clean()
+        uniform_type = cleaned_data.get('uniform_type')
+        new_uniform_type = cleaned_data.get('new_uniform_type')
+        
+        # Either an existing uniform type or a new one must be specified
+        if not uniform_type and not new_uniform_type:
+            self.add_error('uniform_type', 'Please select an existing uniform type or enter a new one.')
+            
+        # Check that at least one size has a quantity
+        has_quantity = False
+        for field_name, value in cleaned_data.items():
+            if field_name.startswith('quantity_') and value and value > 0:
+                has_quantity = True
+                break
+                
+        if not has_quantity:
+            self.add_error(None, 'Please specify a quantity for at least one size.')
+            
+        return cleaned_data
+            
+# Add more forms as needed below

@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Add Uniform with Multiple Sizes{% endblock %}
+
+{% block extra_css %}
+<style>
+  .size-container {
+    border: 1px solid #e9ecef;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 20px;
+    background-color: #f8f9fa;
+  }
+  
+  .size-container h4 {
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+    color: #495057;
+  }
+  
+  .size-row {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e9ecef;
+  }
+  
+  .size-row:last-child {
+    border-bottom: none;
+  }
+  
+  .form-section {
+    margin-bottom: 25px;
+  }
+  
+  .form-section h3 {
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #dee2e6;
+    font-size: 1.5rem;
+  }
+  
+  .alert-info {
+    margin-bottom: 20px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <h1 class="mb-4">Add Uniform with Multiple Sizes</h1>
+  
+  <div class="alert alert-info">
+    <i class="bi bi-info-circle-fill me-2"></i>
+    Use this form to add a uniform type (e.g., Long Sleeve Shirts) with multiple sizes at once.
+    Specify the quantity for each size that you want to add to inventory.
+  </div>
+  
+  <form method="post" class="needs-validation" novalidate>
+    {% csrf_token %}
+    
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger">
+        {% for error in form.non_field_errors %}
+          {{ error }}<br>
+        {% endfor %}
+      </div>
+    {% endif %}
+    
+    <div class="card mb-4">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="bi bi-box-seam-fill me-2"></i>Uniform Information</h5>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <div class="form-group mb-3">
+              <label for="{{ form.uniform_type.id_for_label }}" class="form-label">Uniform Type:</label>
+              {{ form.uniform_type }}
+              {% if form.uniform_type.errors %}
+                <div class="invalid-feedback d-block">{{ form.uniform_type.errors.0 }}</div>
+              {% endif %}
+            </div>
+      
+            <div class="form-group mb-3">
+              <label for="{{ form.new_uniform_type.id_for_label }}" class="form-label">New Uniform Type:</label>
+              {{ form.new_uniform_type }}
+              {% if form.new_uniform_type.errors %}
+                <div class="invalid-feedback d-block">{{ form.new_uniform_type.errors.0 }}</div>
+              {% endif %}
+              <div class="form-text">Leave empty if selecting an existing type above</div>
+            </div>
+          </div>
+          
+          <div class="col-md-6">
+            <div class="form-group mb-3">
+              <label for="{{ form.description.id_for_label }}" class="form-label">Description:</label>
+              {{ form.description }}
+              {% if form.description.errors %}
+                <div class="invalid-feedback d-block">{{ form.description.errors.0 }}</div>
+              {% endif %}
+            </div>
+            
+            <div class="form-group mb-3">
+              <label for="{{ form.price.id_for_label }}" class="form-label">Price ($):</label>
+              {{ form.price }}
+              {% if form.price.errors %}
+                <div class="invalid-feedback d-block">{{ form.price.errors.0 }}</div>
+              {% endif %}
+              <div class="form-text">This price will apply to all sizes</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card mb-4">
+      <div class="card-header bg-success text-white">
+        <h5 class="mb-0"><i class="bi bi-rulers me-2"></i>Available Sizes & Quantities</h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          {% for field in form %}
+            {% if field.name|slice:":9" == "quantity_" %}
+              <div class="col-md-4 col-sm-6 mb-3">
+                <div class="form-group">
+                  <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}:</label>
+                  {{ field }}
+                  {% if field.errors %}
+                    <div class="invalid-feedback d-block">{{ field.errors.0 }}</div>
+                  {% endif %}
+                </div>
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+        
+        <div class="mt-3 mb-0">
+          <div class="form-text">
+            <i class="bi bi-info-circle me-1"></i>
+            Enter quantities for the sizes you want to add. Leave as 0 for sizes you don't need.
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="mt-4 d-flex">
+      <button type="submit" class="btn btn-primary me-2">
+        <i class="bi bi-plus-circle me-1"></i> Add Uniforms
+      </button>
+      <a href="{% url 'inventory:uniform_list' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-x-circle me-1"></i> Cancel
+      </a>
+      <a href="{% url 'inventory:uniform_sizes' %}" class="btn btn-outline-dark ms-auto">
+        <i class="bi bi-gear me-1"></i> Manage Available Sizes
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const uniformTypeSelect = document.getElementById('{{ form.uniform_type.id_for_label }}');
+    const newUniformTypeInput = document.getElementById('{{ form.new_uniform_type.id_for_label }}');
+    
+    // Toggle between existing and new uniform type
+    uniformTypeSelect.addEventListener('change', function() {
+      if (this.value) {
+        newUniformTypeInput.value = '';
+        newUniformTypeInput.setAttribute('disabled', 'disabled');
+      } else {
+        newUniformTypeInput.removeAttribute('disabled');
+      }
+    });
+    
+    newUniformTypeInput.addEventListener('input', function() {
+      if (this.value.trim() !== '') {
+        uniformTypeSelect.value = '';
+        uniformTypeSelect.setAttribute('disabled', 'disabled');
+      } else {
+        uniformTypeSelect.removeAttribute('disabled');
+      }
+    });
+    
+    // Initial state
+    if (uniformTypeSelect.value) {
+      newUniformTypeInput.setAttribute('disabled', 'disabled');
+    } else if (newUniformTypeInput.value.trim() !== '') {
+      uniformTypeSelect.setAttribute('disabled', 'disabled');
+    }
+  });
+</script>
+{% endblock %} 
