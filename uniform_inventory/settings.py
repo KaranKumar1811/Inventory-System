@@ -79,6 +79,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     # Custom security middleware
     'inventory.middleware.SecurityMiddleware',
+    'inventory.middleware.NoCacheMiddleware',  # Add no-cache middleware
     # Add security middlewares
     'axes.middleware.AxesMiddleware',  # Should be the last middleware
 ]

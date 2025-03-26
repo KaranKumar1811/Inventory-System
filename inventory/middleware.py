@@ -1,6 +1,7 @@
 import re
 from django.conf import settings
 from django.http import HttpResponseForbidden
+from django.utils.deprecation import MiddlewareMixin
 
 class SecurityMiddleware:
     """Custom middleware to add additional security headers and checks"""
@@ -61,4 +62,17 @@ class SecurityMiddleware:
                     if re.search(pattern, value, re.IGNORECASE):
                         return True
                         
-        return False 
+        return False
+
+class NoCacheMiddleware(MiddlewareMixin):
+    """
+    Middleware to prevent browser caching for authenticated users.
+    This helps prevent the back button from showing authenticated pages after logout.
+    """
+    def process_response(self, request, response):
+        if request.user.is_authenticated:
+            # Add no-cache headers for authenticated users
+            response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+            response['Pragma'] = 'no-cache'
+            response['Expires'] = '0'
+        return response 

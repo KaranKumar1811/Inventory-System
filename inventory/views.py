@@ -24,6 +24,23 @@ from django.views.decorators.http import require_GET
 import json
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.contrib.auth.views import LogoutView
+from django.utils.http import url_has_allowed_host_and_scheme
+
+# --- Custom Logout View ---
+class CustomLogoutView(LogoutView):
+    """
+    Enhanced logout view that ensures browsers don't cache authenticated pages.
+    """
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        
+        # Add cache control headers to prevent caching
+        response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response['Pragma'] = 'no-cache'
+        response['Expires'] = '0'
+        
+        return response
 
 # --- Search View ---
 class SearchView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
