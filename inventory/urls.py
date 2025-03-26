@@ -15,17 +15,10 @@ from .views import (
     UserListView,
     UserCreateView,
     user_edit_role,
-    # Uncomment or add these once the views are implemented
-    # EmployeeCreateView,
-    # EmployeeUpdateView,
-    # EmployeeDeleteView,
-    # UniformDeleteView,
     damaged_items_report,
     # Import/Export views
     import_employees,
-    import_uniforms,
     export_employee_template,
-    export_uniform_template,
     # Employee archiving
     toggle_employee_archive,
     uniform_stock_api,
@@ -35,6 +28,7 @@ from .views import (
     UniformWithSizesCreateView,
     UniformSizeListView,
     UniformSizeCreateView,
+    UniformSizeUpdateView,
 )
 from django.views.generic import TemplateView
 
@@ -66,16 +60,8 @@ urlpatterns = [
     path('employees/<int:pk>/pdf/', employee_pdf, name='employee_pdf'),
     path('employees/<int:pk>/archive/', toggle_employee_archive, name='toggle_employee_archive'),
     
-    # Uncomment these when you implement the views
-    # path('employees/add/', EmployeeCreateView.as_view(), name='employee_add'),
-    # path('employees/<int:pk>/edit/', EmployeeUpdateView.as_view(), name='employee_edit'),
-    # path('employees/<int:pk>/delete/', EmployeeDeleteView.as_view(), name='employee_delete'),
-    
     # Uniform Inventory Route
     path('uniforms/', UniformListView.as_view(), name='uniform_list'),
-    
-    # Uncomment this when you implement the view
-    # path('uniforms/<int:pk>/delete/', UniformDeleteView.as_view(), name='uniform_delete'),
     
     # Transaction Routes
     path('transaction/new/', MultiItemTransactionCreateView.as_view(), name='transaction_create'),
@@ -85,8 +71,6 @@ urlpatterns = [
     # Import/Export Routes
     path('employees/import/', import_employees, name='import_employees'),
     path('employees/template/', export_employee_template, name='export_employee_template'),
-    path('uniforms/import/', import_uniforms, name='import_uniforms'),
-    path('uniforms/template/', export_uniform_template, name='export_uniform_template'),
     
     # API Routes
     path('api/uniform/<int:uniform_id>/stock/', uniform_stock_api, name='uniform_stock_api'),
@@ -99,6 +83,7 @@ urlpatterns = [
     path('uniforms/add-with-sizes/', UniformWithSizesCreateView.as_view(), name='uniform_add_with_sizes'),
     path('uniform-sizes/', UniformSizeListView.as_view(), name='uniform_sizes'),
     path('uniform-sizes/add/', UniformSizeCreateView.as_view(), name='uniform_size_add'),
+    path('uniform-sizes/<int:pk>/edit/', UniformSizeUpdateView.as_view(), name='uniform_size_edit'),
 ]
 
 

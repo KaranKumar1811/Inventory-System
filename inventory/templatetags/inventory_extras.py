@@ -26,4 +26,11 @@ def add_class(field, css_class):
         attrs['class'] += f" {css_class}"
     else:
         attrs['class'] = css_class
+    return field
+
+@register.filter
+def add_error_class(field, css_class):
+    """Add an error class to a Django form field if it has errors"""
+    if hasattr(field, 'errors') and field.errors:
+        return add_class(field, css_class)
     return field 

@@ -21,7 +21,7 @@
     </div>
     {% endif %}
     
-    <form method="post">
+    <form method="post" class="needs-validation" novalidate>
       {% csrf_token %}
       
       <h4 class="mb-3">Transaction Details</h4>
@@ -31,12 +31,11 @@
         <div class="col-md-4">
           <div class="form-group">
             <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-            {{ field.errors }}
             <div class="form-control-wrapper">
               {% if field.name == 'loaned' %}
                 <div class="form-check form-switch">
                   <input type="checkbox" name="{{ field.name }}" id="{{ field.id_for_label }}" 
-                        class="form-check-input" role="switch" 
+                        class="form-check-input {% if field.errors %}is-invalid{% endif %}" role="switch" 
                         {% if field.value %}checked{% endif %}>
                   <span id="loaned-label" class="ms-2 form-check-label" 
                        style="display: {% if field.value %}inline{% else %}none{% endif %};">
@@ -45,6 +44,13 @@
                 </div>
               {% else %}
                 {{ field }}
+              {% endif %}
+              {% if field.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in field.errors %}
+                {{ error }}
+                {% endfor %}
+              </div>
               {% endif %}
             </div>
             {% if field.help_text %}
@@ -62,8 +68,14 @@
         <div class="col-12">
           <div class="form-group">
             <label for="{{ form.notes.id_for_label }}" class="form-label">Serial Numbers & Notes</label>
-            {{ form.notes.errors }}
             {{ form.notes }}
+            {% if form.notes.errors %}
+            <div class="invalid-feedback d-block">
+              {% for error in form.notes.errors %}
+              {{ error }}
+              {% endfor %}
+            </div>
+            {% endif %}
             <div class="form-text text-muted">
               Use this field to record serial numbers and any other important information about this transaction.
             </div>
@@ -76,7 +88,7 @@
           <div class="alert alert-info">
             <div class="form-check form-switch">
               <input type="checkbox" name="{{ form.is_prior_record.name }}" id="{{ form.is_prior_record.id_for_label }}" 
-                    class="form-check-input" role="switch"
+                    class="form-check-input {% if form.is_prior_record.errors %}is-invalid{% endif %}" role="switch"
                     {% if form.is_prior_record.value %}checked{% endif %}>
               <label class="ms-2 form-check-label" for="{{ form.is_prior_record.id_for_label }}">
                 <strong>{{ form.is_prior_record.label }}</strong>
@@ -96,22 +108,40 @@
           
           <div id="item-forms">
             {% for item_form in item_formset %}
-            <div class="item-form mb-3 p-3 rounded {% if not forloop.first %}mt-3{% endif %}" id="item-{{ forloop.counter0 }}" style="background-color: #ffffff !important;">
+            <div class="item-form mb-3 p-3 rounded {% if not forloop.first %}mt-3{% endif %}" id="item-{{ forloop.counter0 }}">
               <div class="row g-3">
                 <div class="col-md-5">
                   <label for="{{ item_form.uniform_type.id_for_label }}" class="form-label">Uniform Type</label>
-                  {{ item_form.uniform_type.errors }}
                   {{ item_form.uniform_type }}
+                  {% if item_form.uniform_type.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in item_form.uniform_type.errors %}
+                    {{ error }}
+                    {% endfor %}
+                  </div>
+                  {% endif %}
                 </div>
                 <div class="col-md-3">
                   <label for="{{ item_form.size.id_for_label }}" class="form-label">Size</label>
-                  {{ item_form.size.errors }}
                   {{ item_form.size }}
+                  {% if item_form.size.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in item_form.size.errors %}
+                    {{ error }}
+                    {% endfor %}
+                  </div>
+                  {% endif %}
                 </div>
                 <div class="col-md-2">
                   <label for="{{ item_form.quantity.id_for_label }}" class="form-label">Quantity</label>
-                  {{ item_form.quantity.errors }}
                   {{ item_form.quantity }}
+                  {% if item_form.quantity.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in item_form.quantity.errors %}
+                    {{ error }}
+                    {% endfor %}
+                  </div>
+                  {% endif %}
                   <div class="stock-info mt-1" style="display: none;"></div>
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
@@ -159,6 +189,39 @@
     margin: 0.25rem 0;
     font-size: 0.875rem;
   }
+  
+  /* Form validation styling */
+  .form-control.is-invalid,
+  .form-select.is-invalid {
+    border-color: #dc3545;
+    padding-right: calc(1.5em + 0.75rem);
+    background-repeat: no-repeat;
+    background-position: right calc(0.375em + 0.1875rem) center;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+  }
+
+  .form-control.is-invalid {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+  }
+
+  .form-select.is-invalid {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e"), url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+    background-position: right 0.75rem center, center right 2.25rem;
+    background-size: 16px 12px, calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+  }
+
+  .invalid-feedback {
+    display: none;
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.875em;
+    color: #dc3545;
+  }
+
+  .invalid-feedback.d-block {
+    display: block;
+  }
+
   .form-control-wrapper select,
   .form-control-wrapper input:not([type="checkbox"]) {
     display: block;
@@ -174,40 +237,69 @@
     border-radius: 0.25rem;
     transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
   }
+
   .item-form {
     position: relative;
     background-color: #ffffff !important;
     border: 1px solid #dee2e6 !important;
   }
+
   .card-body, .card {
     background-color: #ffffff !important;
   }
+
   .remove-form {
     margin-left: auto;
   }
+
   .form-check.form-switch {
     display: flex;
     align-items: center;
   }
+
   .form-check-input[type="checkbox"] {
     height: 1.5rem !important;
     width: 3rem !important;
     margin-top: 0 !important;
     cursor: pointer;
   }
+
   .form-check-label {
     font-size: 0.9rem;
     color: #6c757d;
     cursor: pointer;
   }
+
   .stock-info {
     margin-top: 0.5rem;
     font-size: 0.875rem;
     color: #6c757d;
   }
+
   .stock-info.low-stock {
     color: #dc3545;
     font-weight: bold;
+  }
+
+  /* Alert styling */
+  .alert {
+    position: relative;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid transparent;
+    border-radius: 0.25rem;
+  }
+
+  .alert-danger {
+    color: #842029;
+    background-color: #f8d7da;
+    border-color: #f5c2c7;
+  }
+
+  .alert-info {
+    color: #055160;
+    background-color: #cff4fc;
+    border-color: #b6effb;
   }
 </style>
 {% endblock %}
@@ -221,11 +313,29 @@
     
     // Track selected uniforms to prevent duplicates
     let selectedUniforms = new Set();
-    
-    // Initialize selected uniforms from existing forms
-    document.querySelectorAll('.item-form select[id$="-uniform"]').forEach(select => {
-      if (select.value) {
-        selectedUniforms.add(select.value);
+
+    // Function to remove error state from a field
+    function clearFieldError(field) {
+      // Remove is-invalid class from the field
+      field.classList.remove('is-invalid');
+      // Find and remove the error message
+      const errorDiv = field.nextElementSibling;
+      if (errorDiv && errorDiv.classList.contains('invalid-feedback')) {
+        errorDiv.remove();
+      }
+    }
+
+    // Function to handle employee selection change
+    document.querySelector('select[name="employee"]').addEventListener('change', function() {
+      if (this.value) {
+        clearFieldError(this);
+      }
+    });
+
+    // Function to handle payment option selection change
+    document.querySelector('select[name="payment_option"]').addEventListener('change', function() {
+      if (this.value) {
+        clearFieldError(this);
       }
     });
     
@@ -242,6 +352,11 @@
       if (uniformIdField) {
         uniformIdField.value = '';
       }
+
+      // Clear error state when type is selected
+      if (uniformTypeSelect.value) {
+        clearFieldError(uniformTypeSelect);
+      }
       
       // If no uniform type is selected, just return
       if (!uniformTypeSelect.value) {
@@ -255,7 +370,7 @@
           // Add size options to the dropdown
           data.sizes.forEach(size => {
             const option = document.createElement('option');
-            option.value = size.id; // This is now the size string itself
+            option.value = size.id;
             option.textContent = size.name;
             sizeSelect.appendChild(option);
           });
@@ -275,6 +390,11 @@
       const uniformIdField = formRow.querySelector('input[id$="-uniform"]');
       const stockInfoDiv = formRow.querySelector('.stock-info');
       
+      // Clear error state when size is selected
+      if (sizeSelect.value) {
+        clearFieldError(sizeSelect);
+      }
+
       // If no size is selected, clear the uniform ID
       if (!sizeSelect.value || !uniformTypeSelect.value) {
         if (uniformIdField) {
@@ -311,6 +431,13 @@
           console.error('Error fetching uniform:', error);
         });
     }
+
+    // Function to handle quantity change
+    function handleQuantityChange(quantityInput) {
+      if (quantityInput.value && parseInt(quantityInput.value) > 0) {
+        clearFieldError(quantityInput);
+      }
+    }
     
     // Add event listeners to uniform type selects
     document.querySelectorAll('.item-form select[id$="-uniform_type"]').forEach(select => {
@@ -335,91 +462,15 @@
         handleSizeChange(select);
       }
     });
-    
-    // Handle uniform selection change
-    function handleUniformChange(select) {
-      const formRow = select.closest('.item-form');
-      const stockInfoDiv = formRow.querySelector('.stock-info');
-      const previousValue = select.getAttribute('data-previous-value');
-      
-      // Remove previous value from selected set
-      if (previousValue) {
-        selectedUniforms.delete(previousValue);
-      }
-      
-      // If there's a stock info div from a previous selection, remove it
-      if (stockInfoDiv) {
-        stockInfoDiv.remove();
-      }
-      
-      // If a uniform is selected
-      if (select.value) {
-        // Check if this uniform is already selected in another form
-        if (selectedUniforms.has(select.value)) {
-          alert('This item is already selected in this transaction. Please choose a different item.');
-          select.value = previousValue || ''; // Reset to previous value or empty
-          return;
-        }
-        
-        // Add to selected set
-        selectedUniforms.add(select.value);
-        select.setAttribute('data-previous-value', select.value);
-        
-        // Create stock info element
-        const selectedOption = select.options[select.selectedIndex];
-        if (selectedOption) {
-          // Fetch stock quantity for the selected uniform
-          fetch(`/inventory/api/uniform/${select.value}/stock/`)
-            .then(response => response.json())
-            .then(data => {
-              const stockDiv = document.createElement('div');
-              stockDiv.className = 'stock-info';
-              
-              if (data.stock_quantity <= 5) {
-                stockDiv.classList.add('low-stock');
-              }
-              
-              stockDiv.textContent = `Available Stock: ${data.stock_quantity} items`;
-              
-              // Insert after the uniform select
-              select.parentNode.appendChild(stockDiv);
-            })
-            .catch(error => {
-              console.error('Error fetching stock quantity:', error);
-            });
-        }
-      } else {
-        // Clear the data-previous-value attribute
-        select.removeAttribute('data-previous-value');
-      }
-    }
-    
-    // Add event listeners to existing uniform selects
-    document.querySelectorAll('.item-form select[id$="-uniform"]').forEach(select => {
-      select.addEventListener('change', () => handleUniformChange(select));
-      
-      // Store initial value
-      if (select.value) {
-        select.setAttribute('data-previous-value', select.value);
-        
-        // Fetch initial stock quantity
-        fetch(`/inventory/api/uniform/${select.value}/stock/`)
-          .then(response => response.json())
-          .then(data => {
-            const stockDiv = document.createElement('div');
-            stockDiv.className = 'stock-info';
-            
-            if (data.stock_quantity <= 5) {
-              stockDiv.classList.add('low-stock');
-            }
-            
-            stockDiv.textContent = `Available Stock: ${data.stock_quantity} items`;
-            select.parentNode.appendChild(stockDiv);
-          })
-          .catch(error => {
-            console.error('Error fetching stock quantity:', error);
-          });
-      }
+
+    // Add event listeners to quantity inputs
+    document.querySelectorAll('.item-form input[id$="-quantity"]').forEach(input => {
+      input.addEventListener('change', () => {
+        handleQuantityChange(input);
+      });
+      input.addEventListener('input', () => {
+        handleQuantityChange(input);
+      });
     });
     
     // Add new form when Add button is clicked
@@ -438,7 +489,13 @@
           input.id = newId;
           input.name = input.name.replace(/items-\d+/, `items-${formCount}`);
           
-          // Clear values for the new form
+          // Clear values and error states for the new form
+          input.classList.remove('is-invalid');
+          const errorDiv = input.nextElementSibling;
+          if (errorDiv && errorDiv.classList.contains('invalid-feedback')) {
+            errorDiv.remove();
+          }
+
           if (input.tagName === 'SELECT') {
             // Reset select dropdown to first option
             if (input.options.length > 0) {
@@ -452,19 +509,20 @@
             }
             
             // Add change event listener to the new select
-            if (input.id.endsWith('-uniform')) {
-              input.addEventListener('change', () => handleUniformChange(input));
-              input.removeAttribute('data-previous-value');
-            } else if (input.id.endsWith('-uniform_type')) {
+            if (input.id.endsWith('-uniform_type')) {
               input.addEventListener('change', () => populateSizeDropdown(input));
             } else if (input.id.endsWith('-size')) {
               input.addEventListener('change', () => handleSizeChange(input));
             }
           } else if (input.tagName === 'INPUT') {
+            if (input.type === 'number') {
+              input.addEventListener('change', () => handleQuantityChange(input));
+              input.addEventListener('input', () => handleQuantityChange(input));
+            }
             // Clear text/number inputs
             if (input.type === 'text' || input.type === 'number') {
               input.value = '';
-            } 
+            }
             // Handle hidden inputs but preserve their default values if any
             else if (input.type !== 'hidden') {
               input.value = '';

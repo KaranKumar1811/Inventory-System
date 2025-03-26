@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.views.generic import ListView, DetailView, CreateView, TemplateView, FormView
+from django.views.generic import ListView, DetailView, CreateView, TemplateView, FormView, View
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from .models import Employee, Uniform, Transaction, ReturnRecord, TransactionItem, MultiItemTransaction, ItemReturnRecord, UniformType, UniformSize
@@ -21,6 +21,9 @@ import os
 from django.conf import settings
 import base64
 from django.views.decorators.http import require_GET
+import json
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 
 # --- Search View ---
 class SearchView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
@@ -94,7 +97,8 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         
         # Total counts
         context['total_employees'] = Employee.objects.count()
-        context['total_uniforms'] = Uniform.objects.count()
+        # Count unique uniform types instead of individual size variations
+        context['total_uniforms'] = UniformType.objects.count()
         
         # Stock level counts (for the stock status overview)
         context['critical_stock_count'] = Uniform.objects.filter(stock_quantity__lt=5).count()
@@ -196,6 +200,38 @@ class EmployeeListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         show_archived = self.request.GET.get('show_archived', 'false').lower() == 'true'
         context['show_archived'] = show_archived
         return context
+
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def toggle_employee_archive(request, pk):
+    """Archive or unarchive an employee."""
+    employee = get_object_or_404(Employee, pk=pk)
+    
+    if request.method == 'POST':
+        # Toggle archive status
+        if employee.is_archived:
+            # Unarchive
+            employee.is_archived = False
+            employee.archive_date = None
+            messages.success(request, f"{employee.first_name} {employee.last_name} has been restored to active status.")
+        else:
+            # Archive
+            employee.is_archived = True
+            employee.archive_date = timezone.now()
+            messages.success(request, f"{employee.first_name} {employee.last_name} has been archived.")
+        
+        employee.save()
+        
+        # Redirect to referer or employee list
+        referer = request.META.get('HTTP_REFERER')
+        if referer:
+            return redirect(referer)
+        return redirect('inventory:employee_list')
+        
+    # If not POST, show confirmation page
+    return render(request, 'inventory/employee_archive_confirm.html', {
+        'employee': employee
+    })
 
 class EmployeeDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
     model = Employee
@@ -878,102 +914,6 @@ def import_employees(request):
 
 @login_required
 @user_passes_test(lambda u: u.is_staff or u.is_superuser)
-def import_uniforms(request):
-    """View to handle importing uniforms from Excel file."""
-    if request.method == 'POST':
-        form = ImportFileForm(request.POST, request.FILES)
-        if form.is_valid():
-            try:
-                # Process the Excel file
-                excel_file = request.FILES['file']
-                df = pd.read_excel(excel_file)
-                
-                # Validate required columns
-                required_columns = ['uniform_type', 'size', 'price', 'stock_quantity']
-                for column in required_columns:
-                    if column not in df.columns:
-                        messages.error(request, f"Missing required column: {column}")
-                        return redirect('inventory:import_uniforms')
-                
-                # Track results
-                success_count = 0
-                error_count = 0
-                errors = []
-                
-                # Process each row in the dataframe
-                with transaction.atomic():
-                    for index, row in df.iterrows():
-                        try:
-                            # Extract data from the row
-                            uniform_type_name = str(row['uniform_type']).strip() 
-                            size = str(row['size']).strip()
-                            
-                            # Skip blank rows
-                            if not uniform_type_name or not size:
-                                continue
-                            
-                            # Convert price and quantities to correct types
-                            try:
-                                price = float(row['price'])
-                                stock_quantity = int(row['stock_quantity']) if pd.notna(row['stock_quantity']) else 0
-                                damaged_quantity = int(row.get('damaged_quantity', 0)) if pd.notna(row.get('damaged_quantity', 0)) else 0
-                            except ValueError:
-                                error_count += 1
-                                errors.append(f"Row {index+2}: Invalid numeric values")
-                                continue
-                            
-                            # Get or create the uniform type
-                            uniform_type_obj, created = UniformType.objects.get_or_create(
-                                name=uniform_type_name,
-                                defaults={'description': row.get('description', '')}
-                            )
-                            
-                            # Check if uniform already exists
-                            uniform, created = Uniform.objects.update_or_create(
-                                name=uniform_type_obj.name,
-                                size=size,
-                                defaults={
-                                    'price': price,
-                                    'stock_quantity': stock_quantity,
-                                    'damaged_quantity': damaged_quantity,
-                                    'uniform_type': uniform_type_obj
-                                }
-                            )
-                            
-                            if created:
-                                success_count += 1
-                            else:
-                                # Updated existing uniform
-                                success_count += 1
-                                
-                        except IntegrityError:
-                            error_count += 1
-                            errors.append(f"Row {index+2}: Duplicate entry for {uniform_type_name} - {size}")
-                        except Exception as e:
-                            error_count += 1
-                            errors.append(f"Row {index+2}: {str(e)}")
-                
-                # Report results
-                if success_count > 0:
-                    messages.success(request, f"Successfully imported {success_count} uniforms.")
-                if error_count > 0:
-                    messages.warning(request, f"Encountered {error_count} errors during import.")
-                    for error in errors[:10]:  # Show first 10 errors
-                        messages.error(request, error)
-                    if len(errors) > 10:
-                        messages.error(request, f"... and {len(errors) - 10} more errors.")
-                
-                return redirect('inventory:uniform_list')
-            
-            except Exception as e:
-                messages.error(request, f"Error processing file: {str(e)}")
-    else:
-        form = ImportFileForm()
-    
-    return render(request, 'inventory/import_uniforms.html', {'form': form})
-
-@login_required
-@user_passes_test(lambda u: u.is_staff or u.is_superuser)
 def export_employee_template(request):
     """Generate a template Excel file for employee imports."""
     # Create a DataFrame with the column headers
@@ -995,162 +935,6 @@ def export_employee_template(request):
         df.to_excel(writer, index=False, sheet_name='Employees')
     
     return response
-
-@login_required
-@user_passes_test(lambda u: u.is_staff or u.is_superuser)
-def export_uniform_template(request):
-    """Generate a template Excel file for uniform imports."""
-    # Create a DataFrame with the column headers
-    df = pd.DataFrame(columns=['uniform_type', 'size', 'price', 'stock_quantity', 'damaged_quantity', 'description'])
-    
-    # Add sample data
-    sample_data = [
-        {'uniform_type': 'Long Sleeve Shirt', 'size': 'Medium', 'price': 25.99, 'stock_quantity': 50, 'damaged_quantity': 0, 'description': 'Standard long sleeve uniform shirt'},
-        {'uniform_type': 'Long Sleeve Shirt', 'size': 'Large', 'price': 25.99, 'stock_quantity': 40, 'damaged_quantity': 0, 'description': 'Standard long sleeve uniform shirt'},
-        {'uniform_type': 'Pants', 'size': 'Medium', 'price': 35.50, 'stock_quantity': 30, 'damaged_quantity': 2, 'description': 'Standard uniform pants'}
-    ]
-    df = pd.concat([df, pd.DataFrame(sample_data)], ignore_index=True)
-    
-    # Create a response with the Excel file
-    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = 'attachment; filename=uniform_import_template.xlsx'
-    
-    # Write the DataFrame to the response
-    with pd.ExcelWriter(response, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Uniforms')
-        
-        # Access the workbook
-        workbook = writer.book
-        worksheet = writer.sheets['Uniforms']
-        
-        # Add instructions
-        instructions_sheet = workbook.create_sheet('Instructions')
-        instructions = [
-            ['Uniform Import Instructions:'],
-            [''],
-            ['Required Fields:'],
-            ['1. uniform_type: The type of uniform (e.g., "Long Sleeve Shirt", "Pants")'],
-            ['2. size: The size of the uniform (e.g., "Small", "Medium", "Large")'],
-            ['3. price: The price of the uniform item (numeric value)'],
-            ['4. stock_quantity: The quantity in stock (integer)'],
-            [''],
-            ['Optional Fields:'],
-            ['5. damaged_quantity: The quantity that is damaged (integer, optional)'],
-            ['6. description: A description of the uniform type (optional)'],
-            [''],
-            ['Multiple Sizes:'],
-            ['- You can import multiple sizes of the same uniform type (see example in the template)'],
-            ['- Each size should be on a separate row with the same uniform_type'],
-            ['- The price can be the same or different for each size'],
-            ['- The description will be applied to the uniform type and shared across all sizes'],
-            [''],
-            ['Notes:'],
-            ['- New uniform types will be created automatically if they don\'t exist'],
-            ['- Existing uniforms will be updated if they match the type and size']
-        ]
-        
-        for i, row in enumerate(instructions):
-            for j, value in enumerate(row):
-                instructions_sheet.cell(row=i+1, column=j+1, value=value)
-    
-    return response
-
-@login_required
-@user_passes_test(lambda u: u.is_staff or u.is_superuser)
-def toggle_employee_archive(request, pk):
-    """Archive or unarchive an employee."""
-    employee = get_object_or_404(Employee, pk=pk)
-    
-    if request.method == 'POST':
-        # Toggle archive status
-        if employee.is_archived:
-            # Unarchive
-            employee.is_archived = False
-            employee.archive_date = None
-            messages.success(request, f"{employee.first_name} {employee.last_name} has been restored to active status.")
-        else:
-            # Archive
-            employee.is_archived = True
-            employee.archive_date = timezone.now()
-            messages.success(request, f"{employee.first_name} {employee.last_name} has been archived.")
-        
-        employee.save()
-        
-        # Redirect to referer or employee list
-        referer = request.META.get('HTTP_REFERER')
-        if referer:
-            return redirect(referer)
-        return redirect('inventory:employee_list')
-        
-    # If not POST, show confirmation page
-    return render(request, 'inventory/employee_archive_confirm.html', {
-        'employee': employee
-    })
-
-@require_GET
-def uniform_stock_api(request, uniform_id):
-    """
-    API endpoint to get stock quantity for a uniform.
-    """
-    uniform = get_object_or_404(Uniform, id=uniform_id)
-    return JsonResponse({
-        'stock_quantity': uniform.stock_quantity,
-        'id': uniform.id,
-        'name': str(uniform)
-    })
-
-@require_GET
-def uniform_type_sizes_api(request, type_id):
-    """
-    API endpoint to get all sizes available for a uniform type.
-    """
-    uniform_type = get_object_or_404(UniformType, id=type_id)
-    
-    # Get all sizes that are available for this uniform type
-    sizes = []
-    uniforms = Uniform.objects.filter(uniform_type=uniform_type)
-    for uniform in uniforms:
-        if uniform.size and uniform.size not in [s['name'] for s in sizes]:
-            sizes.append({
-                'id': uniform.size,  # Use the size string as the ID
-                'name': uniform.size
-            })
-    
-    return JsonResponse({
-        'type_id': uniform_type.id,
-        'type_name': uniform_type.name,
-        'sizes': sizes
-    })
-
-@require_GET
-def uniform_by_type_size_api(request):
-    """
-    API endpoint to get a uniform by type and size.
-    """
-    type_id = request.GET.get('type_id')
-    size = request.GET.get('size_id')  # This is actually the size string, not an ID
-    
-    if not type_id or not size:
-        return JsonResponse({'error': 'Both type_id and size_id are required'}, status=400)
-    
-    try:
-        uniform_type = UniformType.objects.get(id=type_id)
-        
-        try:
-            uniform = Uniform.objects.get(uniform_type=uniform_type, size=size)
-            return JsonResponse({
-                'uniform': {
-                    'id': uniform.id,
-                    'name': str(uniform),
-                    'stock_quantity': uniform.stock_quantity,
-                    'price': str(uniform.price)
-                }
-            })
-        except Uniform.DoesNotExist:
-            return JsonResponse({'error': 'No uniform found with this type and size'}, status=404)
-            
-    except UniformType.DoesNotExist:
-        return JsonResponse({'error': 'Invalid type ID'}, status=404)
 
 # --- Asset Breakdown View ---
 class AssetBreakdownView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
@@ -1281,7 +1065,7 @@ class AssetBreakdownView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         
         return context
 
-# --- Uniform with Multiple Sizes View ---
+# --- Uniform Add View ---
 class UniformWithSizesCreateView(LoginRequiredMixin, UserPassesTestMixin, FormView):
     template_name = 'inventory/uniform_with_sizes_form.html'
     form_class = UniformWithSizesForm
@@ -1314,7 +1098,7 @@ class UniformWithSizesCreateView(LoginRequiredMixin, UserPassesTestMixin, FormVi
                     f'Created new uniform type "{uniform_type.name}"'
                 )
         
-        price = form.cleaned_data['price']
+        price = form.cleaned_value
         sizes = UniformSize.objects.all()
         
         # Create a uniform for each size with quantity > 0
@@ -1386,3 +1170,107 @@ class UniformSizeCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView)
     def form_valid(self, form):
         messages.success(self.request, f'Size "{form.instance.name}" created successfully')
         return super().form_valid(form)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class UniformSizeUpdateView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return self.request.user.is_staff or self.request.user.is_superuser
+
+    def post(self, request, pk):
+        try:
+            size = UniformSize.objects.get(pk=pk)
+            data = json.loads(request.body)
+            
+            # Validate the data
+            if not data.get('name'):
+                return JsonResponse({'error': 'Size name is required'}, status=400)
+            
+            if not data.get('display_order'):
+                return JsonResponse({'error': 'Display order is required'}, status=400)
+            
+            try:
+                display_order = int(data['display_order'])
+            except ValueError:
+                return JsonResponse({'error': 'Display order must be a number'}, status=400)
+            
+            # Update the size
+            size.name = data['name']
+            size.display_order = display_order
+            size.save()
+            
+            return JsonResponse({
+                'name': size.name,
+                'display_order': size.display_order
+            })
+            
+        except UniformSize.DoesNotExist:
+            return JsonResponse({'error': 'Size not found'}, status=404)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+@require_GET
+def uniform_stock_api(request, uniform_id):
+    """
+    API endpoint to get stock quantity for a uniform.
+    """
+    uniform = get_object_or_404(Uniform, id=uniform_id)
+    return JsonResponse({
+        'stock_quantity': uniform.stock_quantity,
+        'id': uniform.id,
+        'name': str(uniform)
+    })
+
+@require_GET
+def uniform_type_sizes_api(request, type_id):
+    """
+    API endpoint to get all sizes available for a uniform type.
+    """
+    uniform_type = get_object_or_404(UniformType, id=type_id)
+    
+    # Get all sizes that are available for this uniform type
+    sizes = []
+    uniforms = Uniform.objects.filter(uniform_type=uniform_type)
+    for uniform in uniforms:
+        if uniform.size and uniform.size not in [s['name'] for s in sizes]:
+            sizes.append({
+                'id': uniform.size,  # Use the size string as the ID
+                'name': uniform.size
+            })
+    
+    return JsonResponse({
+        'type_id': uniform_type.id,
+        'type_name': uniform_type.name,
+        'sizes': sizes
+    })
+
+@require_GET
+def uniform_by_type_size_api(request):
+    """
+    API endpoint to get a uniform by type and size.
+    """
+    type_id = request.GET.get('type_id')
+    size = request.GET.get('size_id')  # This is actually the size string, not an ID
+    
+    if not type_id or not size:
+        return JsonResponse({'error': 'Both type_id and size_id are required'}, status=400)
+    
+    try:
+        uniform_type = UniformType.objects.get(id=type_id)
+        
+        try:
+            uniform = Uniform.objects.get(uniform_type=uniform_type, size=size)
+            return JsonResponse({
+                'uniform': {
+                    'id': uniform.id,
+                    'name': str(uniform),
+                    'stock_quantity': uniform.stock_quantity,
+                    'price': str(uniform.price)
+                }
+            })
+        except Uniform.DoesNotExist:
+            return JsonResponse({'error': 'No uniform found with this type and size'}, status=404)
+            
+    except UniformType.DoesNotExist:
+        return JsonResponse({'error': 'Invalid type ID'}, status=404)

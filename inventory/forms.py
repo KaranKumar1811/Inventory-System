@@ -108,7 +108,10 @@ class MultiItemTransactionForm(forms.ModelForm):
     payment_option = forms.ChoiceField(
         choices=[('', 'Select payment method')] + list(MultiItemTransaction.PAYMENT_OPTIONS),
         required=True,
-        widget=forms.Select(attrs={'class': 'form-select'}),
+        widget=forms.Select(attrs={
+            'class': 'form-select',
+            'aria-label': 'Select payment method'
+        }),
         error_messages={
             'required': 'Please select a payment method',
             'invalid_choice': 'Please select a valid payment method'
@@ -121,7 +124,8 @@ class MultiItemTransactionForm(forms.ModelForm):
         widgets = {
             'employee': forms.Select(attrs={
                 'class': 'form-select',
-                'placeholder': 'Select an employee'
+                'placeholder': 'Select an employee',
+                'aria-label': 'Select employee'
             }),
             'loaned': forms.CheckboxInput(attrs={
                 'class': 'form-check-input',
@@ -131,7 +135,8 @@ class MultiItemTransactionForm(forms.ModelForm):
             'notes': forms.Textarea(attrs={
                 'class': 'form-control',
                 'rows': 3,
-                'placeholder': 'Enter transaction notes, including serial numbers for items'
+                'placeholder': 'Enter transaction notes, including serial numbers for items',
+                'aria-label': 'Transaction notes'
             }),
             'is_prior_record': forms.CheckboxInput(attrs={
                 'class': 'form-check-input',
@@ -160,6 +165,16 @@ class MultiItemTransactionForm(forms.ModelForm):
         # If there's an existing payment option value, preserve it
         if self.instance and self.instance.pk and self.instance.payment_option:
             self.fields['payment_option'].initial = self.instance.payment_option
+            
+        # Add error class to fields with errors
+        for field_name, field in self.fields.items():
+            if field.required:
+                field.widget.attrs['required'] = 'required'
+            if self.errors.get(field_name):
+                if isinstance(field.widget, forms.Select):
+                    field.widget.attrs['class'] = field.widget.attrs.get('class', '') + ' is-invalid'
+                elif isinstance(field.widget, forms.TextInput) or isinstance(field.widget, forms.Textarea):
+                    field.widget.attrs['class'] = field.widget.attrs.get('class', '') + ' is-invalid'
 
 class TransactionItemForm(forms.ModelForm):
     """Form for TransactionItem model."""
@@ -168,16 +183,20 @@ class TransactionItemForm(forms.ModelForm):
         queryset=UniformType.objects.all().order_by('name'),
         required=False,
         empty_label="Select uniform type",
-        widget=forms.Select(attrs={'class': 'form-control uniform-type-select'})
+        widget=forms.Select(attrs={
+            'class': 'form-select uniform-type-select',
+            'aria-label': 'Select uniform type'
+        })
     )
     
-    # Change from ChoiceField to CharField to avoid choices validation
     size = forms.CharField(
         required=False,
-        widget=forms.Select(attrs={'class': 'form-control size-select'})
+        widget=forms.Select(attrs={
+            'class': 'form-select size-select',
+            'aria-label': 'Select size'
+        })
     )
     
-    # Hidden field to store the uniform ID
     uniform = forms.IntegerField(
         required=False,
         widget=forms.HiddenInput(),
@@ -187,7 +206,12 @@ class TransactionItemForm(forms.ModelForm):
         model = TransactionItem
         fields = ['uniform', 'quantity']
         widgets = {
-            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': '1', 'value': '1'}),
+            'quantity': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '1',
+                'value': '1',
+                'aria-label': 'Quantity'
+            }),
         }
     
     def __init__(self, *args, **kwargs):
@@ -199,6 +223,16 @@ class TransactionItemForm(forms.ModelForm):
             self.fields['uniform_type'].initial = uniform.uniform_type
             self.fields['size'].initial = uniform.size
             self.fields['uniform'].initial = uniform.id
+            
+        # Add error class to fields with errors
+        for field_name, field in self.fields.items():
+            if field.required:
+                field.widget.attrs['required'] = 'required'
+            if self.errors.get(field_name):
+                if isinstance(field.widget, forms.Select):
+                    field.widget.attrs['class'] = field.widget.attrs.get('class', '') + ' is-invalid'
+                elif isinstance(field.widget, forms.NumberInput):
+                    field.widget.attrs['class'] = field.widget.attrs.get('class', '') + ' is-invalid'
     
     def clean(self):
         cleaned_data = super().clean()
@@ -211,7 +245,10 @@ class TransactionItemForm(forms.ModelForm):
                 # Replace the ID with the actual Uniform object
                 cleaned_data['uniform'] = uniform
             except Uniform.DoesNotExist:
-                raise ValidationError("The selected uniform does not exist.")
+                raise ValidationError({
+                    'uniform_type': "The selected uniform does not exist.",
+                    'size': "The selected uniform does not exist."
+                })
         else:
             # Try to find the uniform by type and size
             uniform_type = cleaned_data.get('uniform_type')
@@ -222,9 +259,19 @@ class TransactionItemForm(forms.ModelForm):
                     uniform = Uniform.objects.get(uniform_type=uniform_type, size=size)
                     cleaned_data['uniform'] = uniform
                 except Uniform.DoesNotExist:
-                    raise ValidationError("No uniform found with this type and size.")
+                    raise ValidationError({
+                        'uniform_type': "No uniform found with this type and size.",
+                        'size': "No uniform found with this type and size."
+                    })
             else:
-                raise ValidationError("Please select a uniform type and size.")
+                if not uniform_type:
+                    raise ValidationError({
+                        'uniform_type': "Please select a uniform type."
+                    })
+                if not size:
+                    raise ValidationError({
+                        'size': "Please select a size."
+                    })
         
         return cleaned_data
 
@@ -416,11 +463,12 @@ class UniformWithSizesForm(forms.Form):
             
         # Add fields for each size
         for size in sizes:
-            self.fields[f'quantity_{size.id}'] = forms.IntegerField(
+            field_name = f'quantity_{size.id}'
+            self.fields[field_name] = forms.IntegerField(
                 required=False,
                 min_value=0,
                 initial=0,
-                label=f"{size.name} Quantity",
+                label=size.name,
                 widget=forms.NumberInput(attrs={
                     'class': 'form-control size-quantity',
                     'placeholder': f'Quantity for {size.name}'
@@ -447,5 +495,16 @@ class UniformWithSizesForm(forms.Form):
             self.add_error(None, 'Please specify a quantity for at least one size.')
             
         return cleaned_data
-            
+
+    @property
+    def size_fields(self):
+        """Return a list of size quantity fields in display order"""
+        size_fields = []
+        sizes = UniformSize.objects.all().order_by('display_order')
+        for size in sizes:
+            field_name = f'quantity_{size.id}'
+            if field_name in self.fields:
+                size_fields.append(self[field_name])
+        return size_fields
+
 # Add more forms as needed below
