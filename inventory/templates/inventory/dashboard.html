@@ -288,15 +288,15 @@
     margin-bottom: 8px;
   }
   .bg-gradient-primary {
-    background: linear-gradient(45deg, #007bff, #00c6ff);
+    background: linear-gradient(45deg, #007bff, #6384ff);
     color: white;
   }
   .bg-gradient-success {
-    background: linear-gradient(45deg, #28a745, #5cb85c);
+    background: linear-gradient(45deg, #28a745, #20c997);
     color: white;
   }
   .bg-gradient-warning {
-    background: linear-gradient(45deg, #ffc107, #f7b924);
+    background: linear-gradient(45deg, #fd7e14, #ffc107);
     color: white;
   }
   .bg-gradient-danger {
@@ -643,14 +643,14 @@
               </div>
             </div>
             
-            <!-- Average Item Value -->
+            <!-- Replace Average Item Value with Assigned Equipment Value -->
             <div class="col-md-6">
               <div class="card financial-card h-100" style="border-left: 4px solid #20c997 !important;">
                 <div class="card-body text-center">
-                  <div class="mb-3"><i class="bi bi-calculator text-info" style="font-size: 2rem;"></i></div>
-                  <div class="financial-value text-info">${{ equipment_avg_value|default:"0.00"|floatformat:2 }}</div>
-                  <p class="financial-label">Average Item Value</p>
-                  <small class="text-muted">Per equipment item</small>
+                  <div class="mb-3"><i class="bi bi-geo-alt-fill text-info" style="font-size: 2rem;"></i></div>
+                  <div class="financial-value text-info">${{ equipment_assigned_value|default:"0.00"|floatformat:2 }}</div>
+                  <p class="financial-label">Assigned Equipment Value</p>
+                  <small class="text-muted">Items assigned to locations</small>
                 </div>
               </div>
             </div>

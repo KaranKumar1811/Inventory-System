@@ -211,6 +211,19 @@
             </select>
           </div>
           
+          <!-- Location dropdown that appears when 'assigned' is selected -->
+          <div class="mb-3" id="location-select-container" style="display: {% if equipment_item.status == 'assigned' %}block{% else %}none{% endif %};">
+            <label for="location" class="form-label">Assign to Location</label>
+            <select class="form-select" id="location" name="location">
+              <option value="">-- Select Location --</option>
+              {% for location in locations %}
+                <option value="{{ location.id }}" {% if equipment_item.location and equipment_item.location.id == location.id %}selected{% endif %}>
+                  {{ location.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          
           <div class="alert alert-info">
             <small>
               <i class="bi bi-info-circle"></i> <strong>Available</strong>: Item is ready for use but not assigned<br>
@@ -226,6 +239,12 @@
               <i class="bi bi-exclamation-triangle"></i> Changing status to <strong>Available</strong> will clear the location assignment if the item is currently assigned.
             </small>
           </div>
+          
+          <div class="alert alert-warning {% if equipment_item.location %}d-none{% endif %}">
+            <small>
+              <i class="bi bi-exclamation-triangle"></i> Changing status to <strong>Assigned</strong> requires a location to be selected first. You will be redirected to the location assignment page.
+            </small>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -235,4 +254,27 @@
     </div>
   </div>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Get elements
+    const statusSelect = document.getElementById('status');
+    const locationContainer = document.getElementById('location-select-container');
+    
+    // Function to toggle location visibility based on status
+    function toggleLocationField() {
+      if (statusSelect.value === 'assigned') {
+        locationContainer.style.display = 'block';
+      } else {
+        locationContainer.style.display = 'none';
+      }
+    }
+    
+    // Add event listener
+    statusSelect.addEventListener('change', toggleLocationField);
+    
+    // Initial check
+    toggleLocationField();
+  });
+</script>
 {% endblock %} 

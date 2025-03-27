@@ -182,13 +182,13 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         ).aggregate(total_value=Sum('purchase_price'))
         context['equipment_total_value'] = equipment_total['total_value'] or 0
         
-        # 2. Average equipment value
-        equipment_count = EquipmentItem.objects.filter(purchase_price__isnull=False).count()
-        if equipment_count > 0:
-            context['equipment_avg_value'] = context['equipment_total_value'] / equipment_count
-        else:
-            context['equipment_avg_value'] = 0
-            
+        # 2. Assigned equipment value (replacing average equipment value)
+        equipment_assigned = EquipmentItem.objects.filter(
+            location__isnull=False,
+            purchase_price__isnull=False
+        ).aggregate(total_value=Sum('purchase_price'))
+        context['equipment_assigned_value'] = equipment_assigned['total_value'] or 0
+        
         # 3. Maintenance/repair value
         equipment_maintenance = EquipmentItem.objects.filter(
             status__in=['maintenance', 'repair'],
@@ -1560,7 +1560,8 @@ class EquipmentItemDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailVie
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Add additional context data if needed
+        # Add all active locations for the location dropdown
+        context['locations'] = SiteLocation.objects.filter(is_active=True).order_by('name')
         return context
 
 
@@ -1647,15 +1648,35 @@ def update_equipment_status(request, pk):
         new_status = request.POST.get('status')
         if new_status in dict(EquipmentItem.STATUS_CHOICES):
             old_status = equipment.status
-            equipment.status = new_status
-            equipment.save()
             
-            # If status changes to available and it was assigned, remove location
-            if new_status == 'available' and old_status == 'assigned':
-                equipment.location = None
+            # Handle status change to 'assigned'
+            if new_status == 'assigned':
+                location_id = request.POST.get('location')
+                if location_id:
+                    try:
+                        location = SiteLocation.objects.get(id=location_id)
+                        equipment.location = location
+                        equipment.status = new_status
+                        equipment.save()
+                        messages.success(request, f"Status for '{equipment.name}' updated to Assigned and assigned to {location.name}.")
+                    except SiteLocation.DoesNotExist:
+                        messages.error(request, "Selected location does not exist.")
+                        return redirect('inventory:equipment_item_assign', pk=equipment.pk)
+                else:
+                    # If no location provided, redirect to assignment page
+                    messages.warning(request, f"Please select a location before setting the status to 'Assigned'.")
+                    return redirect('inventory:equipment_item_assign', pk=equipment.pk)
+            else:
+                # Handle other status changes
+                equipment.status = new_status
                 equipment.save()
                 
-            messages.success(request, f"Status for '{equipment.name}' updated to {dict(EquipmentItem.STATUS_CHOICES)[new_status]}.")
+                # If status changes to available and it was assigned, remove location
+                if new_status == 'available' and old_status == 'assigned':
+                    equipment.location = None
+                    equipment.save()
+                    
+                messages.success(request, f"Status for '{equipment.name}' updated to {dict(EquipmentItem.STATUS_CHOICES)[new_status]}.")
             
             # Redirect back based on the referring page
             next_url = request.POST.get('next', '')

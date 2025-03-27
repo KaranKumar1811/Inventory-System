@@ -198,9 +198,29 @@
                           {% endfor %}
                         </select>
                       </div>
+                      
+                      <!-- Location dropdown that appears when 'assigned' is selected -->
+                      <div class="mb-3 location-select-container" id="location-container-{{ item.pk }}" style="display: {% if item.status == 'assigned' %}block{% else %}none{% endif %};">
+                        <label for="location-{{ item.pk }}" class="form-label">Assign to Location</label>
+                        <select class="form-select" id="location-{{ item.pk }}" name="location">
+                          <option value="">-- Select Location --</option>
+                          {% for location in locations %}
+                            <option value="{{ location.id }}" {% if item.location and item.location.id == location.id %}selected{% endif %}>
+                              {{ location.name }}
+                            </option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                      
                       <div class="alert alert-info">
                         <small>
                           <i class="bi bi-info-circle"></i> Changing status to <strong>Available</strong> will clear the location assignment if the item is currently assigned.
+                        </small>
+                      </div>
+                      
+                      <div class="alert alert-warning {% if item.location %}d-none{% endif %}">
+                        <small>
+                          <i class="bi bi-exclamation-triangle"></i> Changing status to <strong>Assigned</strong> requires a location to be selected first. You will be redirected to the location assignment page.
                         </small>
                       </div>
                     </div>
@@ -242,6 +262,27 @@
       select.addEventListener('change', function() {
         document.getElementById('filter-form').submit();
       });
+    });
+    
+    // Add event listeners to status dropdowns in modals
+    document.querySelectorAll('[id^="status-"]').forEach(statusSelect => {
+      const itemId = statusSelect.id.split('-')[1];
+      const locationContainer = document.getElementById(`location-container-${itemId}`);
+      
+      // Function to toggle location visibility based on status
+      function toggleLocationField() {
+        if (statusSelect.value === 'assigned') {
+          locationContainer.style.display = 'block';
+        } else {
+          locationContainer.style.display = 'none';
+        }
+      }
+      
+      // Add event listener
+      statusSelect.addEventListener('change', toggleLocationField);
+      
+      // Initial check
+      toggleLocationField();
     });
   });
 </script>
