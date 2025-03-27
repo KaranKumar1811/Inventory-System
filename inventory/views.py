@@ -2,14 +2,14 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import ListView, DetailView, CreateView, TemplateView, FormView, View
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from .models import Employee, Uniform, Transaction, ReturnRecord, TransactionItem, MultiItemTransaction, ItemReturnRecord, UniformType, UniformSize
+from .models import Employee, Uniform, Transaction, ReturnRecord, TransactionItem, MultiItemTransaction, ItemReturnRecord, UniformType, UniformSize, SiteLocation, EquipmentItem
 from django.http import HttpResponse, JsonResponse
 from django.template.loader import get_template
 import io
 from xhtml2pdf import pisa
 from django.utils import timezone
 from django.db.models import Sum, Count, Q, F
-from .forms import ReturnTransactionForm, MultiItemTransactionForm, TransactionItemFormSet, SearchForm, CustomUserCreationForm, UserRoleForm, ImportFileForm, UniformWithSizesForm, UniformSizeForm
+from .forms import ReturnTransactionForm, MultiItemTransactionForm, TransactionItemFormSet, SearchForm, CustomUserCreationForm, UserRoleForm, ImportFileForm, UniformWithSizesForm, UniformSizeForm, SiteLocationForm, EquipmentItemForm
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.generic.edit import FormView, UpdateView
@@ -116,6 +116,8 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         context['total_employees'] = Employee.objects.count()
         # Count unique uniform types instead of individual size variations
         context['total_uniforms'] = UniformType.objects.count()
+        # Count total site locations
+        context['total_locations'] = SiteLocation.objects.count()
         
         # Stock level counts (for the stock status overview)
         context['critical_stock_count'] = Uniform.objects.filter(stock_quantity__lt=5).count()
@@ -172,6 +174,34 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             damaged_value=F('damaged_quantity') * F('price')
         ).aggregate(total_damaged_value=Sum('damaged_value'))
         context['damaged_value'] = damaged_uniform_value['total_damaged_value'] or 0
+        
+        # Equipment financial data for the Financial Equipment Overview card
+        # 1. Total equipment value
+        equipment_total = EquipmentItem.objects.filter(
+            purchase_price__isnull=False
+        ).aggregate(total_value=Sum('purchase_price'))
+        context['equipment_total_value'] = equipment_total['total_value'] or 0
+        
+        # 2. Average equipment value
+        equipment_count = EquipmentItem.objects.filter(purchase_price__isnull=False).count()
+        if equipment_count > 0:
+            context['equipment_avg_value'] = context['equipment_total_value'] / equipment_count
+        else:
+            context['equipment_avg_value'] = 0
+            
+        # 3. Maintenance/repair value
+        equipment_maintenance = EquipmentItem.objects.filter(
+            status__in=['maintenance', 'repair'],
+            purchase_price__isnull=False
+        ).aggregate(total_value=Sum('purchase_price'))
+        context['equipment_maintenance_value'] = equipment_maintenance['total_value'] or 0
+        
+        # 4. Unassigned equipment value
+        equipment_unassigned = EquipmentItem.objects.filter(
+            location__isnull=True,
+            purchase_price__isnull=False
+        ).aggregate(total_value=Sum('purchase_price'))
+        context['equipment_unassigned_value'] = equipment_unassigned['total_value'] or 0
         
         return context
 
@@ -274,7 +304,7 @@ class UniformListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     
     def test_func(self):
         return self.request.user.is_staff or self.request.user.is_superuser
-    
+
     def get(self, request):
         # Use render directly to ensure we're using the right template
         uniforms = Uniform.objects.all()
@@ -665,8 +695,10 @@ def process_item_return(request, pk):
             transaction = transaction_item.transaction
             if transaction.is_fully_returned:
                 transaction.returned = True
-                transaction.return_date = timezone.now()
-                transaction.save()
+            transaction.return_date = timezone.now()
+            transaction.save()
+            
+            if transaction.is_fully_returned:
                 messages.success(request, "All items have been returned for this transaction.")
             else:
                 new_remaining = transaction_item.quantity - transaction_item.total_returned
@@ -1291,3 +1323,347 @@ def uniform_by_type_size_api(request):
             
     except UniformType.DoesNotExist:
         return JsonResponse({'error': 'Invalid type ID'}, status=404)
+
+# --- Site Location Views ---
+class SiteLocationListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
+    """View to list all site locations."""
+    model = SiteLocation
+    template_name = 'inventory/site_location_list.html'
+    context_object_name = 'locations'
+    
+    def test_func(self):
+        return self.request.user.is_authenticated
+    
+    def get_queryset(self):
+        # Default ordering by name, but you can change it based on GET parameters
+        order_by = self.request.GET.get('order_by', 'name')
+        # Filter active/inactive based on GET parameters
+        show_inactive = self.request.GET.get('show_inactive', False)
+        
+        queryset = SiteLocation.objects.all()
+        if not show_inactive:
+            queryset = queryset.filter(is_active=True)
+            
+        # Add ordering
+        if order_by == 'name':
+            queryset = queryset.order_by('name')
+        elif order_by == 'created':
+            queryset = queryset.order_by('-created_at')
+        elif order_by == 'updated':
+            queryset = queryset.order_by('-updated_at')
+        
+        # Annotate each location with the count of equipment items and total value
+        queryset = queryset.annotate(
+            equipment_count=Count('equipment_items'),
+            equipment_value=Sum(
+                F('equipment_items__purchase_price'),
+                filter=Q(equipment_items__purchase_price__isnull=False)
+            )
+        )
+            
+        return queryset
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Add filter parameters to context for the template
+        context['show_inactive'] = self.request.GET.get('show_inactive', False)
+        context['order_by'] = self.request.GET.get('order_by', 'name')
+        
+        # Display count of inactive locations if only showing active
+        if not context['show_inactive']:
+            context['inactive_count'] = SiteLocation.objects.filter(is_active=False).count()
+            
+        return context
+
+
+class SiteLocationCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
+    """View to create a new site location."""
+    model = SiteLocation
+    form_class = SiteLocationForm
+    template_name = 'inventory/site_location_form.html'
+    success_url = reverse_lazy('inventory:site_location_list')
+    
+    def test_func(self):
+        # Require staff privileges to create locations
+        return self.request.user.is_staff or self.request.user.is_superuser
+    
+    def form_valid(self, form):
+        messages.success(self.request, f"Location '{form.instance.name}' was created successfully.")
+        return super().form_valid(form)
+
+
+class SiteLocationDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
+    """View to display site location details."""
+    model = SiteLocation
+    template_name = 'inventory/site_location_detail.html'
+    context_object_name = 'location'
+    
+    def test_func(self):
+        return self.request.user.is_authenticated
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        location = self.get_object()
+        
+        # Get equipment items assigned to this location
+        context['equipment_items'] = EquipmentItem.objects.filter(location=location).order_by('name')
+        context['equipment_count'] = context['equipment_items'].count()
+        
+        return context
+
+
+class SiteLocationUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+    """View to update an existing site location."""
+    model = SiteLocation
+    form_class = SiteLocationForm
+    template_name = 'inventory/site_location_form.html'
+    
+    def test_func(self):
+        # Require staff privileges to update locations
+        return self.request.user.is_staff or self.request.user.is_superuser
+    
+    def get_success_url(self):
+        return reverse_lazy('inventory:site_location_detail', kwargs={'pk': self.object.pk})
+    
+    def form_valid(self, form):
+        messages.success(self.request, f"Location '{form.instance.name}' was updated successfully.")
+        return super().form_valid(form)
+
+
+@login_required
+def toggle_site_location_status(request, pk):
+    """View to toggle a location's active status."""
+    if not (request.user.is_staff or request.user.is_superuser):
+        messages.error(request, "You don't have permission to perform this action.")
+        return redirect('inventory:site_location_list')
+    
+    location = get_object_or_404(SiteLocation, pk=pk)
+    location.is_active = not location.is_active
+    location.save()
+    
+    status = "activated" if location.is_active else "deactivated"
+    messages.success(request, f"Location '{location.name}' has been {status}.")
+    
+    # Redirect back to either the list or detail page based on where the request came from
+    referring_page = request.META.get('HTTP_REFERER', None)
+    if referring_page and 'detail' in referring_page:
+        return redirect('inventory:site_location_detail', pk=location.pk)
+    else:
+        return redirect('inventory:site_location_list')
+
+# --- Equipment Item Views ---
+class EquipmentItemListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
+    """View to list all equipment items."""
+    model = EquipmentItem
+    template_name = 'inventory/equipment_item_list.html'
+    context_object_name = 'equipment_items'
+    
+    def test_func(self):
+        return self.request.user.is_authenticated
+    
+    def get_queryset(self):
+        queryset = EquipmentItem.objects.all()
+        
+        # Filter by status if provided
+        status_filter = self.request.GET.get('status')
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+            
+        # Filter by location if provided
+        location_filter = self.request.GET.get('location')
+        if location_filter:
+            queryset = queryset.filter(location_id=location_filter)
+            
+        # Filter by category if provided
+        category_filter = self.request.GET.get('category')
+        if category_filter:
+            queryset = queryset.filter(category=category_filter)
+            
+        # Search functionality
+        search_query = self.request.GET.get('search')
+        if search_query:
+            queryset = queryset.filter(
+                Q(name__icontains=search_query) |
+                Q(serial_number__icontains=search_query) |
+                Q(asset_tag__icontains=search_query) |
+                Q(category__icontains=search_query)
+            )
+            
+        # Ordering
+        order_by = self.request.GET.get('order_by', 'name')
+        if order_by == 'name':
+            queryset = queryset.order_by('name')
+        elif order_by == 'category':
+            queryset = queryset.order_by('category', 'name')
+        elif order_by == 'status':
+            queryset = queryset.order_by('status', 'name')
+        elif order_by == 'location':
+            queryset = queryset.order_by('location__name', 'name')
+        elif order_by == 'purchase_date':
+            queryset = queryset.order_by('-purchase_date')
+        
+        return queryset
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Add filter data for the template
+        context['status_filter'] = self.request.GET.get('status', '')
+        context['location_filter'] = self.request.GET.get('location', '')
+        context['category_filter'] = self.request.GET.get('category', '')
+        context['search_query'] = self.request.GET.get('search', '')
+        context['order_by'] = self.request.GET.get('order_by', 'name')
+        
+        # Get unique categories and statuses for filter dropdowns
+        context['categories'] = EquipmentItem.objects.values_list('category', flat=True).distinct().order_by('category')
+        context['status_choices'] = EquipmentItem.STATUS_CHOICES
+        context['locations'] = SiteLocation.objects.filter(is_active=True).order_by('name')
+        
+        return context
+
+
+class EquipmentItemCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
+    """View to create a new equipment item."""
+    model = EquipmentItem
+    form_class = EquipmentItemForm
+    template_name = 'inventory/equipment_item_form.html'
+    success_url = reverse_lazy('inventory:equipment_item_list')
+    
+    def test_func(self):
+        # Require staff privileges to create equipment items
+        return self.request.user.is_staff or self.request.user.is_superuser
+    
+    def form_valid(self, form):
+        messages.success(self.request, f"Equipment item '{form.instance.name}' was created successfully.")
+        return super().form_valid(form)
+        
+    def get_initial(self):
+        initial = super().get_initial()
+        # Pre-fill location if provided in URL
+        location_id = self.request.GET.get('location')
+        if location_id:
+            try:
+                initial['location'] = SiteLocation.objects.get(id=location_id)
+            except SiteLocation.DoesNotExist:
+                pass
+        return initial
+
+
+class EquipmentItemDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
+    """View to display equipment item details."""
+    model = EquipmentItem
+    template_name = 'inventory/equipment_item_detail.html'
+    context_object_name = 'equipment_item'
+    
+    def test_func(self):
+        return self.request.user.is_authenticated
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Add additional context data if needed
+        return context
+
+
+class EquipmentItemUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+    """View to update an existing equipment item."""
+    model = EquipmentItem
+    form_class = EquipmentItemForm
+    template_name = 'inventory/equipment_item_form.html'
+    
+    def test_func(self):
+        # Require staff privileges to update equipment items
+        return self.request.user.is_staff or self.request.user.is_superuser
+    
+    def get_success_url(self):
+        return reverse_lazy('inventory:equipment_item_detail', kwargs={'pk': self.object.pk})
+    
+    def form_valid(self, form):
+        messages.success(self.request, f"Equipment item '{form.instance.name}' was updated successfully.")
+        return super().form_valid(form)
+
+
+class EquipmentItemAssignView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+    """View to assign equipment to a location."""
+    model = EquipmentItem
+    template_name = 'inventory/equipment_item_assign.html'
+    fields = ['location']
+    
+    def test_func(self):
+        # Require staff privileges to assign equipment
+        return self.request.user.is_staff or self.request.user.is_superuser
+    
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        # Limit location choices to active locations
+        form.fields['location'].queryset = SiteLocation.objects.filter(is_active=True)
+        form.fields['location'].empty_label = "No location (unassigned)"
+        form.fields['location'].widget.attrs.update({'class': 'form-select'})
+        return form
+    
+    def get_success_url(self):
+        if 'next' in self.request.POST:
+            next_url = self.request.POST.get('next')
+            if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts=[self.request.get_host()]):
+                return next_url
+        return reverse_lazy('inventory:equipment_item_detail', kwargs={'pk': self.object.pk})
+    
+    def form_valid(self, form):
+        previous_location = self.get_object().location
+        result = super().form_valid(form)
+        
+        # Update status to 'assigned' if location is set, or 'available' if removed
+        if form.instance.location:
+            if form.instance.status not in ['maintenance', 'repair', 'retired']:
+                form.instance.status = 'assigned'
+                form.instance.save()
+            location_name = form.instance.location.name
+            messages.success(self.request, f"Equipment item '{form.instance.name}' has been assigned to {location_name}.")
+        else:
+            if form.instance.status == 'assigned':
+                form.instance.status = 'available'
+                form.instance.save()
+            messages.success(self.request, f"Equipment item '{form.instance.name}' has been unassigned.")
+        
+        return result
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['next'] = self.request.GET.get('next', '')
+        # Ensure equipment_item is available in template with both pk and id
+        context['equipment_item'] = self.get_object()
+        return context
+
+
+@login_required
+def update_equipment_status(request, pk):
+    """View to update the status of an equipment item."""
+    if not (request.user.is_staff or request.user.is_superuser):
+        messages.error(request, "You don't have permission to perform this action.")
+        return redirect('inventory:equipment_item_list')
+    
+    equipment = get_object_or_404(EquipmentItem, pk=pk)
+    
+    if request.method == 'POST':
+        new_status = request.POST.get('status')
+        if new_status in dict(EquipmentItem.STATUS_CHOICES):
+            old_status = equipment.status
+            equipment.status = new_status
+            equipment.save()
+            
+            # If status changes to available and it was assigned, remove location
+            if new_status == 'available' and old_status == 'assigned':
+                equipment.location = None
+                equipment.save()
+                
+            messages.success(request, f"Status for '{equipment.name}' updated to {dict(EquipmentItem.STATUS_CHOICES)[new_status]}.")
+            
+            # Redirect back based on the referring page
+            next_url = request.POST.get('next', '')
+            if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts=[request.get_host()]):
+                return redirect(next_url)
+            return redirect('inventory:equipment_item_detail', pk=equipment.pk)
+        else:
+            messages.error(request, "Invalid status selected.")
+    
+    # If not POST or invalid status, redirect to detail view
+    return redirect('inventory:equipment_item_detail', pk=equipment.pk)

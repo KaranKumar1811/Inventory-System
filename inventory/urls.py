@@ -30,6 +30,19 @@ from .views import (
     UniformSizeCreateView,
     UniformSizeUpdateView,
     CustomLogoutView,
+    # Site Location views
+    SiteLocationListView,
+    SiteLocationCreateView,
+    SiteLocationDetailView,
+    SiteLocationUpdateView,
+    toggle_site_location_status,
+    # Equipment Item views
+    EquipmentItemListView,
+    EquipmentItemCreateView,
+    EquipmentItemDetailView,
+    EquipmentItemUpdateView,
+    EquipmentItemAssignView,
+    update_equipment_status,
 )
 from django.views.generic import TemplateView
 
@@ -85,6 +98,21 @@ urlpatterns = [
     path('uniform-sizes/', UniformSizeListView.as_view(), name='uniform_sizes'),
     path('uniform-sizes/add/', UniformSizeCreateView.as_view(), name='uniform_size_add'),
     path('uniform-sizes/<int:pk>/edit/', UniformSizeUpdateView.as_view(), name='uniform_size_edit'),
+    
+    # Site Locations URLs
+    path('site-locations/', SiteLocationListView.as_view(), name='site_location_list'),
+    path('site-locations/create/', SiteLocationCreateView.as_view(), name='site_location_create'),
+    path('site-locations/<int:pk>/', SiteLocationDetailView.as_view(), name='site_location_detail'),
+    path('site-locations/<int:pk>/update/', SiteLocationUpdateView.as_view(), name='site_location_update'),
+    path('site-locations/<int:pk>/toggle-status/', toggle_site_location_status, name='toggle_site_location_status'),
+    
+    # Equipment Item URLs
+    path('equipment/', EquipmentItemListView.as_view(), name='equipment_item_list'),
+    path('equipment/create/', EquipmentItemCreateView.as_view(), name='equipment_item_create'),
+    path('equipment/<int:pk>/', EquipmentItemDetailView.as_view(), name='equipment_item_detail'),
+    path('equipment/<int:pk>/update/', EquipmentItemUpdateView.as_view(), name='equipment_item_update'),
+    path('equipment/<int:pk>/assign/', EquipmentItemAssignView.as_view(), name='equipment_item_assign'),
+    path('equipment/<int:pk>/status/', update_equipment_status, name='update_equipment_status'),
 ]
 
 

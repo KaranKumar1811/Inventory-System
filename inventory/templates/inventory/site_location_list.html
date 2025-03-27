@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% block title %}Site Locations{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Site Locations</h1>
+    <div>
+      {% if request.user.is_staff or request.user.is_superuser %}
+      <a href="{% url 'inventory:site_location_create' %}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Add Location
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <form method="get" action="{% url 'inventory:site_location_list' %}">
+        <div class="row g-3 align-items-center">
+          <div class="col-auto">
+            <label for="order_by" class="col-form-label">Sort by:</label>
+          </div>
+          <div class="col-auto">
+            <select name="order_by" id="order_by" class="form-select" onchange="this.form.submit()">
+              <option value="name" {% if order_by == 'name' %}selected{% endif %}>Name</option>
+              <option value="created" {% if order_by == 'created' %}selected{% endif %}>Date Created</option>
+              <option value="updated" {% if order_by == 'updated' %}selected{% endif %}>Last Updated</option>
+            </select>
+          </div>
+          <div class="col-auto ms-auto">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="show_inactive" name="show_inactive" 
+                     {% if show_inactive %}checked{% endif %} onchange="this.form.submit()">
+              <label class="form-check-label" for="show_inactive">Show Inactive Locations</label>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if locations %}
+  <div class="row">
+    {% for location in locations %}
+    <div class="col-md-6 col-lg-4 mb-4">
+      <div class="card h-100 {% if not location.is_active %}bg-light{% endif %}">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <h5 class="card-title">
+              <a href="{% url 'inventory:site_location_detail' location.pk %}" class="text-decoration-none">
+                {{ location.name }}
+              </a>
+              {% if not location.is_active %}
+              <span class="badge bg-secondary ms-2">Inactive</span>
+              {% endif %}
+            </h5>
+            <div class="dropdown">
+              <button class="btn btn-sm btn-outline-secondary" type="button" id="location{{ location.id }}Menu" 
+                      data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-three-dots-vertical"></i>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="location{{ location.id }}Menu">
+                <li><a class="dropdown-item" href="{% url 'inventory:site_location_detail' location.pk %}">
+                  <i class="bi bi-eye"></i> View Details
+                </a></li>
+                
+                {% if request.user.is_staff or request.user.is_superuser %}
+                <li><a class="dropdown-item" href="{% url 'inventory:site_location_update' location.pk %}">
+                  <i class="bi bi-pencil"></i> Edit
+                </a></li>
+                
+                <li><a class="dropdown-item" href="{% url 'inventory:toggle_site_location_status' location.pk %}"
+                      onclick="return confirm('Are you sure you want to {% if location.is_active %}deactivate{% else %}activate{% endif %} this location?')">
+                  {% if location.is_active %}
+                  <i class="bi bi-x-circle"></i> Deactivate
+                  {% else %}
+                  <i class="bi bi-check-circle"></i> Activate
+                  {% endif %}
+                </a></li>
+                {% endif %}
+              </ul>
+            </div>
+          </div>
+          
+          {% if location.address %}
+          <p class="card-text text-muted">
+            <i class="bi bi-geo-alt"></i> {{ location.address }}
+          </p>
+          {% endif %}
+          
+          <p class="card-text">
+            <span class="badge bg-info rounded-pill">{{ location.equipment_count }} item{% if location.equipment_count != 1 %}s{% endif %}</span>
+            {% if location.equipment_value %}
+            <span class="badge bg-success rounded-pill">${{ location.equipment_value|floatformat:2 }}</span>
+            {% endif %}
+            <small class="text-muted">Created {{ location.created_at|date:"M d, Y" }}</small>
+          </p>
+          
+          {% if location.description %}
+          <p class="card-text">{{ location.description|truncatechars:100 }}</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="alert alert-info">
+    {% if show_inactive %}
+      No locations found. Please add a location to get started.
+    {% else %}
+      No active locations found. 
+      {% if inactive_count > 0 %}
+        There {% if inactive_count == 1 %}is 1 inactive location{% else %}are {{ inactive_count }} inactive locations{% endif %}. 
+        <a href="?show_inactive=True">Show inactive locations</a>
+      {% endif %}
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %} 

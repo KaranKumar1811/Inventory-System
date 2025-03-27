@@ -1,0 +1,238 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ equipment_item.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>{{ equipment_item.name }}</h1>
+    <div>
+      <a href="{% url 'inventory:equipment_item_list' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Inventory
+      </a>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Equipment Details -->
+    <div class="col-md-8">
+      <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Equipment Details</h5>
+          {% if request.user.is_staff or request.user.is_superuser %}
+          <a href="{% url 'inventory:equipment_item_update' equipment_item.pk %}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-pencil"></i> Edit
+          </a>
+          {% endif %}
+        </div>
+        <div class="card-body">
+          <div class="row mb-4">
+            <div class="col-md-6">
+              <h6 class="text-muted mb-2">Basic Information</h6>
+              <table class="table table-sm">
+                <tr>
+                  <th style="width: 140px;">Category</th>
+                  <td>{% if equipment_item.category %}{{ equipment_item.category }}{% else %}<span class="text-muted">Not specified</span>{% endif %}</td>
+                </tr>
+                <tr>
+                  <th>Status</th>
+                  <td>
+                    {% if equipment_item.status == 'available' %}
+                      <span class="badge bg-success">Available</span>
+                    {% elif equipment_item.status == 'assigned' %}
+                      <span class="badge bg-primary">Assigned</span>
+                    {% elif equipment_item.status == 'maintenance' %}
+                      <span class="badge bg-warning text-dark">Under Maintenance</span>
+                    {% elif equipment_item.status == 'repair' %}
+                      <span class="badge bg-danger">In Repair</span>
+                    {% elif equipment_item.status == 'retired' %}
+                      <span class="badge bg-secondary">Retired</span>
+                    {% endif %}
+                    {% if request.user.is_staff or request.user.is_superuser %}
+                    <button type="button" class="btn btn-sm btn-link p-0 align-baseline ms-2" data-bs-toggle="modal" data-bs-target="#statusModal">
+                      <small>Change</small>
+                    </button>
+                    {% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <th>Location</th>
+                  <td>
+                    {% if equipment_item.location %}
+                      <a href="{% url 'inventory:site_location_detail' equipment_item.location.pk %}">
+                        {{ equipment_item.location.name }}
+                      </a>
+                    {% else %}
+                      <span class="text-muted">Not assigned to any location</span>
+                    {% endif %}
+                    {% if request.user.is_staff or request.user.is_superuser %}
+                    <a href="{% url 'inventory:equipment_item_assign' equipment_item.pk %}" class="btn btn-sm btn-link p-0 align-baseline ms-2">
+                      <small>{% if equipment_item.location %}Reassign{% else %}Assign{% endif %}</small>
+                    </a>
+                    {% endif %}
+                  </td>
+                </tr>
+              </table>
+            </div>
+            
+            <div class="col-md-6">
+              <h6 class="text-muted mb-2">Tracking Information</h6>
+              <table class="table table-sm">
+                <tr>
+                  <th style="width: 140px;">Serial Number</th>
+                  <td>{% if equipment_item.serial_number %}{{ equipment_item.serial_number }}{% else %}<span class="text-muted">Not specified</span>{% endif %}</td>
+                </tr>
+                <tr>
+                  <th>Asset Tag</th>
+                  <td>{% if equipment_item.asset_tag %}{{ equipment_item.asset_tag }}{% else %}<span class="text-muted">Not specified</span>{% endif %}</td>
+                </tr>
+                <tr>
+                  <th>Purchase Date</th>
+                  <td>{% if equipment_item.purchase_date %}{{ equipment_item.purchase_date|date:"F d, Y" }}{% else %}<span class="text-muted">Not specified</span>{% endif %}</td>
+                </tr>
+                <tr>
+                  <th>Purchase Price</th>
+                  <td>{% if equipment_item.purchase_price %}${{ equipment_item.purchase_price }}{% else %}<span class="text-muted">Not specified</span>{% endif %}</td>
+                </tr>
+                <tr>
+                  <th>Last Maintenance</th>
+                  <td>{% if equipment_item.last_maintenance_date %}{{ equipment_item.last_maintenance_date|date:"F d, Y" }}{% else %}<span class="text-muted">No maintenance recorded</span>{% endif %}</td>
+                </tr>
+              </table>
+            </div>
+          </div>
+          
+          {% if equipment_item.description %}
+          <div class="mb-4">
+            <h6 class="text-muted mb-2">Description</h6>
+            <p>{{ equipment_item.description|linebreaks }}</p>
+          </div>
+          {% endif %}
+          
+          {% if equipment_item.notes %}
+          <div>
+            <h6 class="text-muted mb-2">Notes</h6>
+            <p>{{ equipment_item.notes|linebreaks }}</p>
+          </div>
+          {% endif %}
+        </div>
+        <div class="card-footer text-muted">
+          <small>Created: {{ equipment_item.created_at|date:"F d, Y g:i A" }}</small>
+          <br>
+          <small>Last Updated: {{ equipment_item.updated_at|date:"F d, Y g:i A" }}</small>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="col-md-4">
+      {% if request.user.is_staff or request.user.is_superuser %}
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">Actions</h5>
+        </div>
+        <div class="card-body">
+          <div class="d-grid gap-2">
+            <a href="{% url 'inventory:equipment_item_update' equipment_item.pk %}" class="btn btn-outline-primary">
+              <i class="bi bi-pencil"></i> Edit Equipment
+            </a>
+            <a href="{% url 'inventory:equipment_item_assign' equipment_item.pk %}" class="btn btn-outline-primary">
+              <i class="bi bi-geo-alt"></i> 
+              {% if equipment_item.location %}Reassign to Different Location{% else %}Assign to Location{% endif %}
+            </a>
+            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#statusModal">
+              <i class="bi bi-arrow-repeat"></i> Change Status
+            </button>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+      
+      {% if equipment_item.location %}
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">Current Location</h5>
+        </div>
+        <div class="card-body">
+          <h6>{{ equipment_item.location.name }}</h6>
+          {% if equipment_item.location.address %}
+          <p class="text-muted">
+            <i class="bi bi-geo-alt"></i> {{ equipment_item.location.address }}
+          </p>
+          {% endif %}
+          {% if equipment_item.location.description %}
+          <p>{{ equipment_item.location.description|truncatechars:100 }}</p>
+          {% endif %}
+          <a href="{% url 'inventory:site_location_detail' equipment_item.location.pk %}" class="btn btn-sm btn-outline-secondary">
+            View Location Details
+          </a>
+        </div>
+      </div>
+      {% endif %}
+      
+      <!-- Placeholder for future features -->
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">Maintenance History</h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted">No maintenance records found.</p>
+          {% if request.user.is_staff or request.user.is_superuser %}
+          <button type="button" class="btn btn-sm btn-outline-secondary disabled">
+            <i class="bi bi-plus"></i> Record Maintenance (Coming Soon)
+          </button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Status Change Modal -->
+<div class="modal fade" id="statusModal" tabindex="-1" aria-labelledby="statusModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="statusModalLabel">Update Status: {{ equipment_item.name }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post" action="{% url 'inventory:update_equipment_status' equipment_item.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.path }}">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="status" class="form-label">New Status</label>
+            <select class="form-select" id="status" name="status">
+              {% for status_code, status_name in equipment_item.STATUS_CHOICES %}
+              <option value="{{ status_code }}" {% if equipment_item.status == status_code %}selected{% endif %}>
+                {{ status_name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <div class="alert alert-info">
+            <small>
+              <i class="bi bi-info-circle"></i> <strong>Available</strong>: Item is ready for use but not assigned<br>
+              <i class="bi bi-info-circle"></i> <strong>Assigned</strong>: Item is assigned to a location<br>
+              <i class="bi bi-info-circle"></i> <strong>Under Maintenance</strong>: Item is temporarily unavailable for routine maintenance<br>
+              <i class="bi bi-info-circle"></i> <strong>In Repair</strong>: Item is being repaired and unavailable<br>
+              <i class="bi bi-info-circle"></i> <strong>Retired</strong>: Item is no longer in use
+            </small>
+          </div>
+          
+          <div class="alert alert-warning">
+            <small>
+              <i class="bi bi-exclamation-triangle"></i> Changing status to <strong>Available</strong> will clear the location assignment if the item is currently assigned.
+            </small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Update Status</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %} 

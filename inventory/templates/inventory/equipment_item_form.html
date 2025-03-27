@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+
+{% block title %}
+{% if object %}Edit Equipment: {{ object.name }}{% else %}Add New Equipment{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>{% if object %}Edit Equipment: {{ object.name }}{% else %}Add New Equipment{% endif %}</h1>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <form method="post" novalidate>
+        {% csrf_token %}
+        
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+          {% for error in form.non_field_errors %}
+          {{ error }}
+          {% endfor %}
+        </div>
+        {% endif %}
+        
+        <div class="row mb-4">
+          <div class="col-md-6">
+            <h4 class="mb-3">Basic Information</h4>
+            
+            <div class="mb-3">
+              <label for="{{ form.name.id_for_label }}" class="form-label">{{ form.name.label }}</label>
+              {{ form.name }}
+              {% if form.name.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.name.errors %}
+                {{ error }}
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+            
+            <div class="mb-3">
+              <label for="{{ form.category.id_for_label }}" class="form-label">{{ form.category.label }}</label>
+              {{ form.category }}
+              {% if form.category.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.category.errors %}
+                {{ error }}
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+            
+            <div class="mb-3">
+              <label for="{{ form.description.id_for_label }}" class="form-label">{{ form.description.label }}</label>
+              {{ form.description }}
+              {% if form.description.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.description.errors %}
+                {{ error }}
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          
+          <div class="col-md-6">
+            <h4 class="mb-3">Tracking & Status</h4>
+            
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="{{ form.serial_number.id_for_label }}" class="form-label">{{ form.serial_number.label }}</label>
+                  {{ form.serial_number }}
+                  {% if form.serial_number.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.serial_number.errors %}
+                    {{ error }}
+                    {% endfor %}
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="{{ form.asset_tag.id_for_label }}" class="form-label">{{ form.asset_tag.label }}</label>
+                  {{ form.asset_tag }}
+                  {% if form.asset_tag.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.asset_tag.errors %}
+                    {{ error }}
+                    {% endfor %}
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="{{ form.purchase_date.id_for_label }}" class="form-label">{{ form.purchase_date.label }}</label>
+                  {{ form.purchase_date }}
+                  {% if form.purchase_date.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.purchase_date.errors %}
+                    {{ error }}
+                    {% endfor %}
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="{{ form.purchase_price.id_for_label }}" class="form-label">{{ form.purchase_price.label }}</label>
+                  {{ form.purchase_price }}
+                  {% if form.purchase_price.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.purchase_price.errors %}
+                    {{ error }}
+                    {% endfor %}
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="{{ form.status.id_for_label }}" class="form-label">{{ form.status.label }}</label>
+                  {{ form.status }}
+                  {% if form.status.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.status.errors %}
+                    {{ error }}
+                    {% endfor %}
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="{{ form.last_maintenance_date.id_for_label }}" class="form-label">{{ form.last_maintenance_date.label }}</label>
+                  {{ form.last_maintenance_date }}
+                  {% if form.last_maintenance_date.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.last_maintenance_date.errors %}
+                    {{ error }}
+                    {% endfor %}
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label for="{{ form.location.id_for_label }}" class="form-label">{{ form.location.label }}</label>
+              {{ form.location }}
+              {% if form.location.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.location.errors %}
+                {{ error }}
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        
+        <div class="mb-3">
+          <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}</label>
+          {{ form.notes }}
+          {% if form.notes.errors %}
+          <div class="invalid-feedback d-block">
+            {% for error in form.notes.errors %}
+            {{ error }}
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        
+        <div class="d-flex justify-content-between mt-4">
+          <a href="{% url 'inventory:equipment_item_list' %}" class="btn btn-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary">
+            {% if object %}Save Changes{% else %}Create Equipment{% endif %}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Auto-update status to 'assigned' if location is set
+  document.addEventListener('DOMContentLoaded', function() {
+    const locationSelect = document.getElementById('{{ form.location.id_for_label }}');
+    const statusSelect = document.getElementById('{{ form.status.id_for_label }}');
+    
+    if (locationSelect && statusSelect) {
+      locationSelect.addEventListener('change', function() {
+        // If a location is selected and status is 'available', change to 'assigned'
+        if (this.value && statusSelect.value === 'available') {
+          statusSelect.value = 'assigned';
+        }
+        // If location is cleared and status is 'assigned', change to 'available'
+        else if (!this.value && statusSelect.value === 'assigned') {
+          statusSelect.value = 'available';
+        }
+      });
+    }
+  });
+</script>
+{% endblock %} 

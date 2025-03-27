@@ -1,6 +1,6 @@
 from django import forms
 from django.forms import inlineformset_factory, formset_factory
-from .models import Transaction, MultiItemTransaction, TransactionItem, Employee, Uniform, ReturnRecord, UniformType, UniformSize
+from .models import Transaction, MultiItemTransaction, TransactionItem, Employee, Uniform, ReturnRecord, UniformType, UniformSize, SiteLocation, EquipmentItem
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User, Group, Permission
 from django.contrib.contenttypes.models import ContentType
@@ -507,4 +507,119 @@ class UniformWithSizesForm(forms.Form):
                 size_fields.append(self[field_name])
         return size_fields
 
+# Add the SiteLocationForm below
+class SiteLocationForm(forms.ModelForm):
+    """Form for creating and updating site locations."""
+    class Meta:
+        model = SiteLocation
+        fields = ['name', 'address', 'description', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Location name (e.g. Main Office, Warehouse A)',
+            }),
+            'address': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Physical address (optional)',
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Brief description of this location',
+            }),
+            'is_active': forms.CheckboxInput(attrs={
+                'class': 'form-check-input',
+                'role': 'switch',
+            }),
+        }
+        labels = {
+            'is_active': 'Active Location',
+        }
+        help_texts = {
+            'is_active': 'Inactive locations will not appear in assignment dropdown lists',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Add validation classes for Bootstrap
+        for field_name, field in self.fields.items():
+            if field.required:
+                field.widget.attrs['required'] = 'required'
+            if self.errors.get(field_name):
+                if isinstance(field.widget, forms.Select):
+                    field.widget.attrs['class'] = field.widget.attrs.get('class', '') + ' is-invalid'
+                elif isinstance(field.widget, forms.TextInput) or isinstance(field.widget, forms.Textarea):
+                    field.widget.attrs['class'] = field.widget.attrs.get('class', '') + ' is-invalid'
+
 # Add more forms as needed below
+
+class EquipmentItemForm(forms.ModelForm):
+    """Form for creating and updating equipment items."""
+    
+    class Meta:
+        model = EquipmentItem
+        fields = [
+            'name', 'category', 'serial_number', 'asset_tag', 
+            'purchase_date', 'purchase_price', 'status', 
+            'last_maintenance_date', 'location', 'description', 'notes'
+        ]
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter equipment name'
+            }),
+            'category': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter category (e.g., Computer, Tool, Machinery)'
+            }),
+            'serial_number': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter serial number (optional)'
+            }),
+            'asset_tag': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter asset tag (optional)'
+            }),
+            'purchase_date': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+            'purchase_price': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter purchase price',
+                'step': '0.01'
+            }),
+            'status': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'last_maintenance_date': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+            'location': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Enter equipment description'
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Enter additional notes'
+            }),
+        }
+        
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Filter locations to only active ones
+        self.fields['location'].queryset = SiteLocation.objects.filter(is_active=True)
+        self.fields['location'].empty_label = "Select a location (optional)"
+        
+        # Add error class to fields with errors
+        for field_name, field in self.fields.items():
+            if field.required:
+                field.widget.attrs['required'] = 'required'
+            if self.errors.get(field_name):
+                field.widget.attrs['class'] = field.widget.attrs.get('class', '') + ' is-invalid'

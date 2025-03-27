@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+
+{% block title %}Assign {{ equipment_item.name }} to Location{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Assign to Location</h1>
+    <div>
+      <a href="{% url 'inventory:equipment_item_detail' equipment_item.pk %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Equipment
+      </a>
+    </div>
+  </div>
+  
+  <div class="row">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">Assign {{ equipment_item.name }} to a Location</h5>
+        </div>
+        <div class="card-body">
+          <div class="mb-4">
+            <div class="d-flex align-items-center mb-3">
+              <div class="me-3">
+                <span class="badge bg-secondary p-2">
+                  <i class="bi bi-box-seam fs-5"></i>
+                </span>
+              </div>
+              <div>
+                <h5 class="mb-1">{{ equipment_item.name }}</h5>
+                <div>
+                  {% if equipment_item.category %}<span class="badge bg-info">{{ equipment_item.category }}</span>{% endif %}
+                  {% if equipment_item.status == 'available' %}
+                    <span class="badge bg-success">Available</span>
+                  {% elif equipment_item.status == 'assigned' %}
+                    <span class="badge bg-primary">Assigned</span>
+                  {% elif equipment_item.status == 'maintenance' %}
+                    <span class="badge bg-warning text-dark">Under Maintenance</span>
+                  {% elif equipment_item.status == 'repair' %}
+                    <span class="badge bg-danger">In Repair</span>
+                  {% elif equipment_item.status == 'retired' %}
+                    <span class="badge bg-secondary">Retired</span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            
+            {% if equipment_item.location %}
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle"></i> 
+              This equipment is currently assigned to <strong>{{ equipment_item.location.name }}</strong>.
+              Selecting a different location below will reassign it.
+            </div>
+            {% endif %}
+          </div>
+          
+          <form method="post">
+            {% csrf_token %}
+            {% if next %}
+            <input type="hidden" name="next" value="{{ next }}">
+            {% endif %}
+            
+            <div class="mb-4">
+              <label for="{{ form.location.id_for_label }}" class="form-label">Choose a location</label>
+              {{ form.location }}
+              {% if form.location.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.location.errors %}
+                {{ error }}
+                {% endfor %}
+              </div>
+              {% endif %}
+              <div class="form-text">
+                Select a location to assign this equipment to, or select "No location (unassigned)" 
+                to remove it from its current location.
+              </div>
+            </div>
+            
+            <div class="d-flex justify-content-between">
+              <a href="{% url 'inventory:equipment_item_detail' equipment_item.id %}" class="btn btn-outline-secondary">Cancel</a>
+              <button type="submit" class="btn btn-primary">
+                {% if equipment_item.location %}Reassign Equipment{% else %}Assign Equipment{% endif %}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">About Equipment Assignment</h5>
+        </div>
+        <div class="card-body">
+          <p>
+            Assigning equipment to a location helps you track and manage your inventory. 
+            When equipment is assigned to a location:
+          </p>
+          
+          <ul>
+            <li>Its status will be updated to "Assigned"</li>
+            <li>It will appear in the location's inventory list</li>
+            <li>It can be easily found when searching by location</li>
+          </ul>
+          
+          <div class="alert alert-info">
+            <small><i class="bi bi-info-circle"></i> You can assign equipment to any active location.</small>
+          </div>
+          
+          <div class="alert alert-warning">
+            <small>
+              <i class="bi bi-exclamation-triangle"></i> Equipment with status "Under Maintenance", "In Repair", 
+              or "Retired" will maintain that status even when assigned to a location.
+            </small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} 

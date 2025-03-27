@@ -4,7 +4,7 @@ from django.urls import path, reverse
 from django.shortcuts import get_object_or_404, redirect, render 
 from .forms import ReturnTransactionForm    
 from django.utils import timezone
-from .models import Transaction, Employee, Uniform, ReturnRecord, TransactionItem, MultiItemTransaction, ItemReturnRecord
+from .models import Transaction, Employee, Uniform, ReturnRecord, TransactionItem, MultiItemTransaction, ItemReturnRecord, SiteLocation
 
 # Inline admin for TransactionItems within a MultiItemTransaction
 class TransactionItemInline(admin.TabularInline):
@@ -116,6 +116,27 @@ class MultiItemTransactionAdmin(admin.ModelAdmin):
             return format_html('<span style="color: green;">✓</span>')
         return format_html('<span style="color: red;">✗</span>')
     fully_returned.short_description = "Fully Returned"
+
+@admin.register(SiteLocation)
+class SiteLocationAdmin(admin.ModelAdmin):
+    list_display = ('name', 'address', 'is_active', 'created_at', 'updated_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('name', 'address', 'description')
+    readonly_fields = ('created_at', 'updated_at')
+    list_editable = ('is_active',)
+    ordering = ('name',)
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'address', 'description')
+        }),
+        ('Status', {
+            'fields': ('is_active',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
 
 
     

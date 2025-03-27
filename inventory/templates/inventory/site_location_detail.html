@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+
+{% block title %}Location: {{ location.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>{{ location.name }}</h1>
+    <div>
+      <a href="{% url 'inventory:site_location_list' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Locations
+      </a>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Location details card -->
+    <div class="col-md-6 mb-4">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h2 class="mb-0 h5">Location Details</h2>
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary" type="button" id="locationMenuButton" 
+                    data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-three-dots-vertical"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="locationMenuButton">
+              {% if request.user.is_staff or request.user.is_superuser %}
+              <li><a class="dropdown-item" href="{% url 'inventory:site_location_update' location.pk %}">
+                <i class="bi bi-pencil"></i> Edit Location
+              </a></li>
+              <li><a class="dropdown-item" href="{% url 'inventory:toggle_site_location_status' location.pk %}"
+                     onclick="return confirm('Are you sure you want to {% if location.is_active %}deactivate{% else %}activate{% endif %} this location?')">
+                {% if location.is_active %}
+                <i class="bi bi-x-circle"></i> Deactivate Location
+                {% else %}
+                <i class="bi bi-check-circle"></i> Activate Location
+                {% endif %}
+              </a></li>
+              {% endif %}
+            </ul>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="d-flex justify-content-between mb-3">
+            {% if not location.is_active %}
+            <span class="badge bg-secondary">Inactive</span>
+            {% endif %}
+          </div>
+          
+          {% if location.address %}
+          <div class="mb-3">
+            <strong><i class="bi bi-geo-alt"></i> Address:</strong>
+            <p>{{ location.address }}</p>
+          </div>
+          {% endif %}
+          
+          {% if location.description %}
+          <div class="mb-3">
+            <strong><i class="bi bi-info-circle"></i> Description:</strong>
+            <p>{{ location.description }}</p>
+          </div>
+          {% endif %}
+          
+          <div class="mb-3">
+            <strong><i class="bi bi-calendar"></i> Date Created:</strong>
+            <p>{{ location.created_at|date:"F j, Y, g:i a" }}</p>
+          </div>
+          
+          <div class="mb-3">
+            <strong><i class="bi bi-clock-history"></i> Last Updated:</strong>
+            <p>{{ location.updated_at|date:"F j, Y, g:i a" }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Equipment items card -->
+    <div class="col-md-6 mb-4">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h2 class="mb-0 h5">Equipment at this Location</h2>
+          {% if request.user.is_staff and location.is_active %}
+          <a href="{% url 'inventory:equipment_item_create' %}?location={{ location.id }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-plus-lg"></i> Add Equipment
+          </a>
+          {% endif %}
+        </div>
+        <div class="card-body">
+          {% if equipment_items %}
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in equipment_items %}
+                  <tr>
+                    <td>
+                      <a href="{% url 'inventory:equipment_item_detail' item.pk %}" class="text-decoration-none">
+                        {{ item.name }}
+                      </a>
+                    </td>
+                    <td>{% if item.category %}{{ item.category }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                    <td>
+                      {% if item.status == 'available' %}
+                        <span class="badge bg-success">Available</span>
+                      {% elif item.status == 'assigned' %}
+                        <span class="badge bg-primary">Assigned</span>
+                      {% elif item.status == 'maintenance' %}
+                        <span class="badge bg-warning text-dark">Maintenance</span>
+                      {% elif item.status == 'repair' %}
+                        <span class="badge bg-danger">Repair</span>
+                      {% elif item.status == 'retired' %}
+                        <span class="badge bg-secondary">Retired</span>
+                      {% endif %}
+                    </td>
+                    <td class="text-end">
+                      <a href="{% url 'inventory:equipment_item_detail' item.pk %}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-eye"></i>
+                      </a>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="alert alert-info">
+              No equipment items assigned to this location yet.
+              {% if request.user.is_staff and location.is_active %}
+              <a href="{% url 'inventory:equipment_item_create' %}?location={{ location.id }}" class="alert-link">Add equipment items</a> to get started.
+              {% endif %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} 

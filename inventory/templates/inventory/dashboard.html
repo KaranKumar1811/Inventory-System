@@ -303,6 +303,10 @@
     background: linear-gradient(45deg, #dc3545, #ff6b6b);
     color: white;
   }
+  .bg-gradient-info {
+    background: linear-gradient(45deg, #17a2b8, #6610f2);
+    color: white;
+  }
   .bg-light-hover:hover {
     background-color: rgba(0,0,0,0.03);
   }
@@ -404,16 +408,19 @@
   </div>
   
   <div class="col-md-3">
-    <div class="card stats-card bg-gradient-danger">
+    <div class="card stats-card bg-gradient-info">
       <div class="card-body">
         <div class="stats-icon">
-          <i class="bi bi-exclamation-triangle-fill"></i>
+          <i class="bi bi-geo-alt-fill"></i>
         </div>
-        <div class="stats-number">{{ low_stock_uniforms.count }}</div>
-        <div class="stats-label">Low Stock Items</div>
+        <div class="stats-number">
+          <!-- This will be dynamic once we implement equipment -->
+          {{ total_locations|default:0 }}
+        </div>
+        <div class="stats-label">Site Locations</div>
       </div>
       <div class="card-footer bg-white">
-        <a href="#low-stock-section" class="btn btn-sm btn-outline-danger w-100">View Details</a>
+        <a href="{% url 'inventory:site_location_list' %}" class="btn btn-sm btn-outline-info w-100">Manage Locations</a>
       </div>
     </div>
   </div>
@@ -615,43 +622,76 @@
 </div>
 
 <div class="row dashboard-row">
-  <!-- Most Active Employees -->
+  <!-- Financial Equipment Overview (Replacing Most Active Employees) -->
   <div class="col-md-6">
     <div class="card dashboard-card">
       <div class="card-header bg-success text-white">
-        <h5 class="mb-0"><i class="bi bi-person-badge"></i> Most Active Employees</h5>
+        <h5 class="mb-0"><i class="bi bi-tools"></i> Financial Equipment Overview</h5>
       </div>
-      <div class="card-body p-0">
-        {% if most_active_employees %}
-          <div class="table-responsive">
-            <table class="table table-hover table-hover-custom mb-0">
-              <thead>
-                <tr>
-                  <th>Employee</th>
-                  <th>ID</th>
-                  <th>Transactions</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for employee in most_active_employees %}
-                <tr>
-                  <td>{{ employee.first_name }} {{ employee.last_name }}</td>
-                  <td>{{ employee.employee_id }}</td>
-                  <td>{{ employee.transaction_count }}</td>
-                  <td>
-                    <a href="{% url 'inventory:employee_detail' employee.id %}" class="btn btn-sm btn-outline-success">View</a>
-                  </td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
+      <div class="card-body">
+        <div class="inner-cards-container">
+          <div class="row mb-3">
+            <!-- Total Equipment Value -->
+            <div class="col-md-6">
+              <div class="card financial-card h-100" style="border-left: 4px solid #0d6efd !important;">
+                <div class="card-body text-center">
+                  <div class="mb-3"><i class="bi bi-tools text-primary" style="font-size: 2rem;"></i></div>
+                  <div class="financial-value text-primary">${{ equipment_total_value|default:"0.00"|floatformat:2 }}</div>
+                  <p class="financial-label">Total Equipment Value</p>
+                  <small class="text-muted">All equipment items</small>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Average Item Value -->
+            <div class="col-md-6">
+              <div class="card financial-card h-100" style="border-left: 4px solid #20c997 !important;">
+                <div class="card-body text-center">
+                  <div class="mb-3"><i class="bi bi-calculator text-info" style="font-size: 2rem;"></i></div>
+                  <div class="financial-value text-info">${{ equipment_avg_value|default:"0.00"|floatformat:2 }}</div>
+                  <p class="financial-label">Average Item Value</p>
+                  <small class="text-muted">Per equipment item</small>
+                </div>
+              </div>
+            </div>
           </div>
-        {% else %}
-          <div class="p-3 text-center text-muted">
-            No active employees found in the last 30 days.
+          
+          <div class="row mb-3">
+            <!-- Maintenance Value -->
+            <div class="col-md-6">
+              <div class="card financial-card h-100" style="border-left: 4px solid #dc3545 !important;">
+                <div class="card-body text-center">
+                  <div class="mb-3"><i class="bi bi-wrench text-danger" style="font-size: 2rem;"></i></div>
+                  <div class="financial-value text-danger">${{ equipment_maintenance_value|default:"0.00"|floatformat:2 }}</div>
+                  <p class="financial-label">Maintenance Value</p>
+                  <small class="text-muted">Items in maintenance/repair</small>
+                  <div class="mt-3">
+                    <a href="{% url 'inventory:equipment_item_list' %}?status=maintenance" class="btn btn-sm btn-outline-danger">
+                      <i class="bi bi-eye"></i> View Details
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Unassigned Value -->
+            <div class="col-md-6">
+              <div class="card financial-card h-100" style="border-left: 4px solid #fd7e14 !important;">
+                <div class="card-body text-center">
+                  <div class="mb-3"><i class="bi bi-box text-warning" style="font-size: 2rem;"></i></div>
+                  <div class="financial-value text-warning">${{ equipment_unassigned_value|default:"0.00"|floatformat:2 }}</div>
+                  <p class="financial-label">Unassigned Value</p>
+                  <small class="text-muted">Items not assigned to locations</small>
+                  <div class="mt-3">
+                    <a href="{% url 'inventory:equipment_item_list' %}?status=available" class="btn btn-sm btn-outline-warning">
+                      <i class="bi bi-eye"></i> View Details
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        {% endif %}
+        </div>
       </div>
     </div>
   </div>

@@ -204,3 +204,53 @@ class ItemReturnRecord(models.Model):
     
     def __str__(self):
         return f"Return for Item {self.transaction_item.id} - {self.returned_quantity} items"
+
+# New models for site location based equipment tracking
+class SiteLocation(models.Model):
+    """Model representing a physical location where equipment items can be assigned."""
+    name = models.CharField(max_length=100)
+    address = models.CharField(max_length=255, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+    
+    class Meta:
+        ordering = ['name']
+        verbose_name = 'Site Location'
+        verbose_name_plural = 'Site Locations'
+
+class EquipmentItem(models.Model):
+    """Model representing equipment items that can be assigned to site locations."""
+    STATUS_CHOICES = [
+        ('available', 'Available'),
+        ('assigned', 'Assigned'),
+        ('maintenance', 'Under Maintenance'),
+        ('repair', 'In Repair'),
+        ('retired', 'Retired'),
+    ]
+    
+    name = models.CharField(max_length=100)
+    category = models.CharField(max_length=100, blank=True, null=True)
+    serial_number = models.CharField(max_length=100, blank=True, null=True, unique=True)
+    asset_tag = models.CharField(max_length=100, blank=True, null=True, unique=True)
+    purchase_date = models.DateField(blank=True, null=True)
+    purchase_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='available')
+    last_maintenance_date = models.DateField(blank=True, null=True)
+    location = models.ForeignKey(SiteLocation, on_delete=models.SET_NULL, blank=True, null=True, related_name='equipment_items')
+    description = models.TextField(blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+    
+    class Meta:
+        ordering = ['name']
+        verbose_name = 'Equipment Item'
+        verbose_name_plural = 'Equipment Items'

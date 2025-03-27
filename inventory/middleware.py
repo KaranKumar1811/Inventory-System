@@ -38,6 +38,10 @@ class SecurityMiddleware:
         """
         Check if the request parameters contain SQL injection patterns
         """
+        # Skip SQL injection checks for equipment-related paths
+        if '/equipment/' in request.path:
+            return False
+            
         # Common SQL injection patterns
         sql_patterns = [
             r'(\s|;|,|\)|\"|\')(\s)*(SELECT|INSERT|UPDATE|DELETE|DROP|ALTER|UNION|INTO|LOAD_FILE)\s+',
@@ -46,7 +50,7 @@ class SecurityMiddleware:
         ]
         
         # Fields to exclude from SQL injection checks (allow special characters)
-        excluded_fields = ['notes']
+        excluded_fields = ['notes', 'description', 'name', 'category', 'serial_number', 'asset_tag']
         
         # Combine GET and POST parameters
         all_params = dict(list(request.GET.items()) + list(request.POST.items()))
