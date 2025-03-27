@@ -59,6 +59,8 @@ class SearchView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             employees = Employee.objects.none()
             uniforms = Uniform.objects.none()
             transactions = MultiItemTransaction.objects.none()
+            locations = SiteLocation.objects.none()
+            equipment = EquipmentItem.objects.none()
             
             # Filter based on search type
             if search_type in ['all', 'employees']:
@@ -83,13 +85,39 @@ class SearchView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
                     Q(items__uniform__name__icontains=query) |
                     Q(items__serial_number__icontains=query)
                 ).distinct()
+                
+            if search_type in ['all', 'locations']:
+                locations = SiteLocation.objects.filter(
+                    Q(name__icontains=query) |
+                    Q(address__icontains=query) |
+                    Q(description__icontains=query)
+                )
+                
+            if search_type in ['all', 'equipment']:
+                equipment = EquipmentItem.objects.filter(
+                    Q(name__icontains=query) |
+                    Q(category__icontains=query) |
+                    Q(serial_number__icontains=query) |
+                    Q(asset_tag__icontains=query) |
+                    Q(description__icontains=query) |
+                    Q(notes__icontains=query) |
+                    Q(location__name__icontains=query)
+                )
             
             context['query'] = query
             context['search_type'] = search_type
             context['employees'] = employees
             context['uniforms'] = uniforms
             context['transactions'] = transactions
-            context['has_results'] = employees.exists() or uniforms.exists() or transactions.exists()
+            context['locations'] = locations
+            context['equipment'] = equipment
+            context['has_results'] = (
+                employees.exists() or 
+                uniforms.exists() or 
+                transactions.exists() or
+                locations.exists() or
+                equipment.exists()
+            )
         
         context['form'] = SearchForm(initial={
             'query': query, 

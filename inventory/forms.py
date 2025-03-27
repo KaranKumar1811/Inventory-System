@@ -15,7 +15,7 @@ class SearchForm(forms.Form):
         required=False,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Search employees, uniforms...',
+            'placeholder': 'Search employees, uniforms, locations, equipment...',
             'aria-label': 'Search'
         })
     )
@@ -26,7 +26,9 @@ class SearchForm(forms.Form):
             ('all', 'All'),
             ('employees', 'Employees'),
             ('uniforms', 'Uniforms'),
-            ('transactions', 'Transactions')
+            ('transactions', 'Transactions'),
+            ('locations', 'Locations'),
+            ('equipment', 'Equipment')
         ],
         widget=forms.Select(attrs={'class': 'form-select'})
     )

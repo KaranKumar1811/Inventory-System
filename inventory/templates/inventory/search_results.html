@@ -155,6 +155,101 @@
             </table>
           </div>
         {% endif %}
+
+        {% if locations.exists and search_type in 'all,locations' %}
+          <h3 class="mt-4 mb-3"><i class="bi bi-geo-alt me-2"></i>Locations</h3>
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead class="table-dark">
+                <tr>
+                  <th>Name</th>
+                  <th>Address</th>
+                  <th>Equipment Count</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for location in locations %}
+                <tr>
+                  <td>{{ location.name }}</td>
+                  <td>{{ location.address|default:"-" }}</td>
+                  <td>
+                    <span class="badge {% if location.equipment_items.count > 0 %}bg-success{% else %}bg-secondary{% endif %}">
+                      {{ location.equipment_items.count }} items
+                    </span>
+                  </td>
+                  <td>
+                    {% if location.is_active %}
+                      <span class="badge bg-success">Active</span>
+                    {% else %}
+                      <span class="badge bg-danger">Inactive</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <a href="{% url 'inventory:site_location_detail' location.id %}" class="btn btn-sm btn-outline-primary">
+                      <i class="bi bi-eye"></i>
+                    </a>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+        
+        {% if equipment.exists and search_type in 'all,equipment' %}
+          <h3 class="mt-4 mb-3"><i class="bi bi-tools me-2"></i>Equipment</h3>
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead class="table-dark">
+                <tr>
+                  <th>Name</th>
+                  <th>Category</th>
+                  <th>Serial/Asset #</th>
+                  <th>Status</th>
+                  <th>Location</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in equipment %}
+                <tr>
+                  <td>{{ item.name }}</td>
+                  <td>{{ item.category|default:"-" }}</td>
+                  <td>
+                    {% if item.serial_number %}
+                      <div><small>S/N: {{ item.serial_number }}</small></div>
+                    {% endif %}
+                    {% if item.asset_tag %}
+                      <div><small>Asset: {{ item.asset_tag }}</small></div>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if item.status == 'available' %}
+                      <span class="badge bg-success">Available</span>
+                    {% elif item.status == 'assigned' %}
+                      <span class="badge bg-primary">Assigned</span>
+                    {% elif item.status == 'maintenance' %}
+                      <span class="badge bg-warning text-dark">Under Maintenance</span>
+                    {% elif item.status == 'repair' %}
+                      <span class="badge bg-danger">In Repair</span>
+                    {% elif item.status == 'retired' %}
+                      <span class="badge bg-secondary">Retired</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ item.location.name|default:"-" }}</td>
+                  <td>
+                    <a href="{% url 'inventory:equipment_item_detail' item.id %}" class="btn btn-sm btn-outline-primary">
+                      <i class="bi bi-eye"></i>
+                    </a>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
       {% else %}
         <div class="alert alert-info">
           <i class="bi bi-info-circle me-2"></i>No results found for your search.

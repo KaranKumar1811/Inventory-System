@@ -93,7 +93,7 @@
                 <thead>
                   <tr>
                     <th>Name</th>
-                    <th>Category</th>
+                    <th>Serial Number</th>
                     <th>Status</th>
                     <th></th>
                   </tr>
@@ -106,7 +106,7 @@
                         {{ item.name }}
                       </a>
                     </td>
-                    <td>{% if item.category %}{{ item.category }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                    <td>{% if item.serial_number %}{{ item.serial_number }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
                     <td>
                       {% if item.status == 'available' %}
                         <span class="badge bg-success">Available</span>
