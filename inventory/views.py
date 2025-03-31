@@ -1152,51 +1152,48 @@ class UniformWithSizesCreateView(LoginRequiredMixin, UserPassesTestMixin, FormVi
         return self.request.user.is_staff or self.request.user.is_superuser
     
     def form_valid(self, form):
-        # Get or create the uniform type
-        uniform_type = None
-        if form.cleaned_data.get('uniform_type'):
-            uniform_type = form.cleaned_data['uniform_type']
-        elif form.cleaned_data.get('new_uniform_type'):
-            # Create a new uniform type
-            try:
-                # Check if a uniform type with this name already exists
-                uniform_type = UniformType.objects.get(name=form.cleaned_data['new_uniform_type'])
-                messages.info(
-                    self.request,
-                    f'Using existing uniform type "{uniform_type.name}"'
-                )
-            except UniformType.DoesNotExist:
-                uniform_type = UniformType.objects.create(
-                    name=form.cleaned_data['new_uniform_type'],
-                    description=form.cleaned_data.get('description', '')
-                )
-                messages.success(
-                    self.request,
-                    f'Created new uniform type "{uniform_type.name}"'
-                )
-        
-        price = form.cleaned_value
-        sizes = UniformSize.objects.all()
-        
-        # Create a uniform for each size with quantity > 0
-        uniforms_created = 0
-        for size in sizes:
-            quantity = form.cleaned_data.get(f'quantity_{size.id}', 0)
-            if quantity > 0:
-                # Check if this uniform already exists
-                try:
-                    uniform = Uniform.objects.get(name=uniform_type.name, size=size.name)
-                    # Update existing uniform
-                    uniform.price = price
-                    uniform.stock_quantity += quantity
-                    uniform.uniform_type = uniform_type
-                    uniform.save()
-                    messages.success(
-                        self.request, 
-                        f'Updated existing {uniform.name} - {uniform.size} (added {quantity} to stock)'
-                    )
-                except Uniform.DoesNotExist:
-                    # Create new uniform
+        try:
+            with transaction.atomic():
+                # Get or create the uniform type
+                uniform_type = None
+                if form.cleaned_data.get('uniform_type'):
+                    uniform_type = form.cleaned_data['uniform_type']
+                elif form.cleaned_data.get('new_uniform_type'):
+                    # Create a new uniform type
+                    try:
+                        # Check if a uniform type with this name already exists
+                        uniform_type = UniformType.objects.get(name=form.cleaned_data['new_uniform_type'])
+                        messages.info(
+                            self.request,
+                            f'Using existing uniform type "{uniform_type.name}"'
+                        )
+                    except UniformType.DoesNotExist:
+                        uniform_type = UniformType.objects.create(
+                            name=form.cleaned_data['new_uniform_type'],
+                            description=form.cleaned_data.get('description', '')
+                        )
+                        messages.success(
+                            self.request,
+                            f'Created new uniform type "{uniform_type.name}"'
+                        )
+                
+                # Get all sizes from the form data
+                sizes = []
+                for field_name, value in form.cleaned_data.items():
+                    if field_name.startswith('quantity_') and value and value > 0:
+                        size_id = field_name.replace('quantity_', '')
+                        try:
+                            size = UniformSize.objects.get(id=size_id)
+                            sizes.append((size, value))
+                        except UniformSize.DoesNotExist:
+                            continue
+                
+                # Price for all uniform variants
+                price = form.cleaned_data.get('price', 0)
+                
+                # Create a uniform for each size with quantity > 0
+                for size, quantity in sizes:
+                    # Create the uniform
                     uniform = Uniform.objects.create(
                         name=uniform_type.name,
                         size=size.name,
@@ -1204,22 +1201,12 @@ class UniformWithSizesCreateView(LoginRequiredMixin, UserPassesTestMixin, FormVi
                         stock_quantity=quantity,
                         uniform_type=uniform_type
                     )
-                    messages.success(
-                        self.request, 
-                        f'Created new {uniform.name} - {uniform.size} with {quantity} in stock'
-                    )
-                uniforms_created += 1
-        
-        if uniforms_created > 0:
-            messages.success(
-                self.request, 
-                f'Successfully added/updated {uniforms_created} uniform items with different sizes'
-            )
-        else:
-            messages.warning(self.request, 'No uniforms were created or updated. Please specify quantities.')
+                
+                messages.success(self.request, f'Successfully created {len(sizes)} uniform variants')
+                return super().form_valid(form)
+        except Exception as e:
+            messages.error(self.request, f'Error creating uniform: {str(e)}')
             return self.form_invalid(form)
-            
-        return super().form_valid(form)
 
 # --- Uniform Size Management View ---
 class UniformSizeListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
