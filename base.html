@@ -262,11 +262,21 @@
         
         <div class="navbar-nav align-items-center">
           <span class="nav-item nav-link text-light d-none d-xl-block">
-            <i class="bi bi-person-circle me-1"></i>{{ user.username }}
+            <i class="bi bi-person-circle me-1"></i>
+            {% if user.first_name %}
+              {{ user.first_name }}
+            {% else %}
+              {{ user.username }}
+            {% endif %}
           </span>
           <div class="d-block d-xl-none border-top my-2 pt-2 w-100">
             <span class="nav-item nav-link text-light">
-              <i class="bi bi-person-circle me-1"></i>{{ user.username }}
+              <i class="bi bi-person-circle me-1"></i>
+              {% if user.first_name %}
+                {{ user.first_name }}
+              {% else %}
+                {{ user.username }}
+              {% endif %}
             </span>
           </div>
           <form method="post" action="{% url 'inventory:logout' %}" class="nav-item">

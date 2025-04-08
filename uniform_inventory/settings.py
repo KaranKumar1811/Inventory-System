@@ -89,7 +89,9 @@ ROOT_URLCONF = 'uniform_inventory.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR],
+        'DIRS': [
+            BASE_DIR,  # Base directory first for priority
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
