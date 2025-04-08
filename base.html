@@ -111,14 +111,90 @@
       border-color: #f5c2c7;
       color: #842029;
     }
+    
+    /* Responsive navigation styling */
+    @media (max-width: 991px) {
+      .navbar-collapse {
+        background-color: #343a40;
+        padding: 1rem;
+        border-radius: 0 0 0.5rem 0.5rem;
+        box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+        max-height: calc(100vh - 56px);
+        overflow-y: auto;
+      }
+      
+      .navbar-nav .nav-link {
+        padding: 0.75rem 0.5rem;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+      }
+      
+      .navbar-nav .nav-link:last-child {
+        border-bottom: none;
+      }
+      
+      .navbar-toggler {
+        border-color: rgba(255,255,255,0.3);
+        padding: 0.5rem;
+      }
+      
+      .navbar-toggler:focus {
+        box-shadow: 0 0 0 0.2rem rgba(255,255,255,0.2);
+      }
+      
+      .navbar-toggler-icon {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.8%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+      }
+      
+      /* Search bar in mobile view */
+      .navbar form.d-flex {
+        margin: 0.75rem 0;
+        width: 100%;
+      }
+      
+      /* User section in mobile view */
+      .navbar-nav .nav-link.text-light {
+        margin-top: 0.5rem;
+      }
+    }
+    
+    /* For medium screens like MacBooks */
+    @media (min-width: 992px) and (max-width: 1299px) {
+      .navbar-nav .nav-link {
+        padding: 0.5rem 0.6rem;
+        font-size: 0.85rem;
+      }
+      
+      .navbar-brand {
+        font-size: 1rem;
+      }
+      
+      .search-input {
+        max-width: 120px;
+      }
+    }
+    
+    /* Improve navbar spacing for all screen sizes */
+    .nav-spacer {
+      width: 10px;
+    }
+    
+    .navbar .container-fluid {
+      padding-left: 0.75rem;
+      padding-right: 0.75rem;
+    }
+    
+    .navbar-nav .nav-item {
+      display: flex;
+      align-items: center;
+    }
   </style>
   {% block extra_css %}{% endblock %}
 </head>
 <body>
   <!-- Navigation Bar -->
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <nav class="navbar navbar-expand-xl navbar-dark bg-dark">
     <div class="container-fluid">
-      <a class="navbar-brand" href="{% url 'inventory:dashboard' %}">
+      <a class="navbar-brand d-flex align-items-center" href="{% url 'inventory:dashboard' %}">
         <i class="bi bi-box-seam me-2"></i>Uniform Inventory
       </a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
@@ -126,7 +202,7 @@
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav me-auto">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
           <!-- Dashboard Link -->
           <li class="nav-item">
             <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" 
@@ -161,14 +237,14 @@
           <li class="nav-item">
             <a class="nav-link {% if 'transaction' in request.path %}active{% endif %}" 
                href="{% url 'inventory:transaction_create' %}">
-              <i class="bi bi-plus-circle me-1"></i>New Transaction
+              <i class="bi bi-plus-circle me-1"></i>Transaction
             </a>
           </li>
           {% if user.is_superuser %}
           <li class="nav-item">
             <a class="nav-link {% if 'user' in request.path %}active{% endif %}" 
                href="{% url 'inventory:user_list' %}">
-              <i class="bi bi-people-fill me-1"></i>User Management
+              <i class="bi bi-people-fill me-1"></i>Users
             </a>
           </li>
           {% endif %}
@@ -177,17 +253,22 @@
         <!-- Search Form -->
         <form class="d-flex mx-2" action="{% url 'inventory:search' %}" method="GET">
           <div class="input-group">
-            <input type="text" name="query" class="form-control form-control-sm" placeholder="Search..." aria-label="Search">
-            <button class="btn btn-outline-light btn-sm" type="submit">
+            <input type="text" name="query" class="form-control search-input" placeholder="Search..." aria-label="Search">
+            <button class="btn btn-outline-light" type="submit">
               <i class="bi bi-search"></i>
             </button>
           </div>
         </form>
         
-        <div class="navbar-nav">
-          <span class="nav-item nav-link text-light">
+        <div class="navbar-nav align-items-center">
+          <span class="nav-item nav-link text-light d-none d-xl-block">
             <i class="bi bi-person-circle me-1"></i>{{ user.username }}
           </span>
+          <div class="d-block d-xl-none border-top my-2 pt-2 w-100">
+            <span class="nav-item nav-link text-light">
+              <i class="bi bi-person-circle me-1"></i>{{ user.username }}
+            </span>
+          </div>
           <form method="post" action="{% url 'inventory:logout' %}" class="nav-item">
             {% csrf_token %}
             <button type="submit" class="btn nav-link">
@@ -269,5 +350,38 @@
   </script>
   
   {% block extra_js %}{% endblock %}
+  
+  <!-- Navbar mobile functionality script -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize navbar toggler behavior
+      const navbarToggler = document.querySelector('.navbar-toggler');
+      const navbarCollapse = document.querySelector('.navbar-collapse');
+      
+      if (navbarToggler && navbarCollapse) {
+        // Close menu when clicking outside
+        document.addEventListener('click', function(event) {
+          const isClickInside = navbarToggler.contains(event.target) || navbarCollapse.contains(event.target);
+          
+          if (!isClickInside && navbarCollapse.classList.contains('show')) {
+            // Using Bootstrap's API to collapse the navbar
+            const bsCollapse = new bootstrap.Collapse(navbarCollapse);
+            bsCollapse.hide();
+          }
+        });
+        
+        // Close menu when clicking on a nav link (for mobile)
+        const navLinks = document.querySelectorAll('.navbar-nav .nav-link');
+        navLinks.forEach(function(link) {
+          link.addEventListener('click', function() {
+            if (window.innerWidth < 992 && navbarCollapse.classList.contains('show')) {
+              const bsCollapse = new bootstrap.Collapse(navbarCollapse);
+              bsCollapse.hide();
+            }
+          });
+        });
+      }
+    });
+  </script>
 </body>
 </html>
