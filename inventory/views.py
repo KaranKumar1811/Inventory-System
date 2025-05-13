@@ -26,8 +26,6 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.contrib.auth.views import LogoutView
 from django.utils.http import url_has_allowed_host_and_scheme
-from django.core.management import call_command
-from django.contrib.admin.views.decorators import staff_member_required
 
 # --- Custom Logout View ---
 class CustomLogoutView(LogoutView):
@@ -1705,19 +1703,3 @@ def update_equipment_status(request, pk):
     
     # If not POST or invalid status, redirect to detail view
     return redirect('inventory:equipment_item_detail', pk=equipment.pk)
-
-@staff_member_required
-def populate_system(request):
-    """Temporary view to populate the system with sample data"""
-    try:
-        # Run the populate_data command with specified parameters
-        call_command(
-            'populate_data',
-            employees=15,
-            transactions=25,
-            equipment=10,
-            verbosity=2
-        )
-        return HttpResponse('<h1>System successfully populated with sample data!</h1><p>You can now remove this temporary view.</p>')
-    except Exception as e:
-        return HttpResponse(f'<h1>Error populating system:</h1><p>{str(e)}</p>')

@@ -43,8 +43,6 @@ from .views import (
     EquipmentItemUpdateView,
     EquipmentItemAssignView,
     update_equipment_status,
-    # Temporary data population
-    populate_system,
 )
 from django.views.generic import TemplateView
 
@@ -115,9 +113,6 @@ urlpatterns = [
     path('equipment/<int:pk>/update/', EquipmentItemUpdateView.as_view(), name='equipment_item_update'),
     path('equipment/<int:pk>/assign/', EquipmentItemAssignView.as_view(), name='equipment_item_assign'),
     path('equipment/<int:pk>/status/', update_equipment_status, name='update_equipment_status'),
-    
-    # Temporary URL for system population (remove after use)
-    path('populate-system-temp/', populate_system, name='populate_system'),
 ]
 
 
