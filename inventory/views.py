@@ -700,7 +700,10 @@ def process_item_return(request, pk):
             if has_damaged_items:
                 damaged_quantity = form.cleaned_data['damaged_quantity'] or 0
                 damage_type = form.cleaned_data['damage_type'] or 'none'
-                damage_notes = form.cleaned_data['damage_notes'] or ''
+                # Sanitize damage notes to prevent CSRF issues
+                damage_notes = form.cleaned_data.get('damage_notes', '') or ''
+                # Limit the length of damage notes
+                damage_notes = damage_notes[:500]
             
             # Create the return record
             ItemReturnRecord.objects.create(
