@@ -35,42 +35,52 @@ class SearchForm(forms.Form):
 
 class ReturnTransactionForm(forms.Form):
     all_returned = forms.ChoiceField(
-        choices=[('yes', 'Yes, all remaining items'), ('no', 'No, only some items')],
+        choices=(('yes', 'Yes, all items returned'), ('no', 'Partial return')),
         widget=forms.RadioSelect,
-        initial='no',
-        required=True
+        label="Return Options",
+        initial='yes'
     )
-    
     returned_quantity = forms.IntegerField(
         required=False,
         min_value=1,
+        label="If partial, how many items to return?",
         widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
     
     has_damaged_items = forms.BooleanField(
         required=False,
-        initial=False
+        label="Some returned items are damaged/unusable",
+        widget=forms.CheckboxInput(attrs={
+            'class': 'form-check-input',
+            'id': 'has_damaged_items'
+        })
     )
-    
     damaged_quantity = forms.IntegerField(
         required=False,
         min_value=0,
-        widget=forms.NumberInput(attrs={'class': 'form-control'})
+        label="Number of damaged items",
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'id': 'damaged_quantity'
+        })
     )
-    
     damage_type = forms.ChoiceField(
+        required=False,
         choices=ReturnRecord.DAMAGE_TYPE_CHOICES,
-        required=False,
-        widget=forms.Select(attrs={'class': 'form-select'})
+        label="Type of damage",
+        widget=forms.Select(attrs={
+            'class': 'form-select',
+            'id': 'damage_type'
+        })
     )
-    
     damage_notes = forms.CharField(
-        max_length=500,
         required=False,
+        label="Damage description",
         widget=forms.Textarea(attrs={
             'class': 'form-control',
             'rows': 3,
-            'placeholder': 'Describe the damage (optional)'
+            'id': 'damage_notes',
+            'placeholder': 'Please describe the damage...'
         })
     )
     
@@ -85,26 +95,26 @@ class ReturnTransactionForm(forms.Form):
         
         # Limit to 500 characters
         return damage_notes[:500]
-        
+
     def clean(self):
         cleaned_data = super().clean()
-        all_returned = cleaned_data.get('all_returned')
-        returned_quantity = cleaned_data.get('returned_quantity')
-        has_damaged_items = cleaned_data.get('has_damaged_items')
-        damaged_quantity = cleaned_data.get('damaged_quantity')
+        all_returned = cleaned_data.get("all_returned")
+        returned_quantity = cleaned_data.get("returned_quantity")
+        has_damaged_items = cleaned_data.get("has_damaged_items")
+        damaged_quantity = cleaned_data.get("damaged_quantity")
+        damage_type = cleaned_data.get("damage_type")
         
-        # If not returning all items, require a quantity
         if all_returned == 'no' and not returned_quantity:
-            self.add_error('returned_quantity', 'Please enter the number of items being returned.')
+            self.add_error("returned_quantity", "Please specify how many items were returned.")
         
-        # If has damaged items, require a damaged quantity
-        if has_damaged_items and damaged_quantity is None:
-            self.add_error('damaged_quantity', 'Please enter the number of damaged items.')
-        
-        # Make sure damaged quantity is not more than returned quantity
-        if returned_quantity and damaged_quantity and damaged_quantity > returned_quantity:
-            self.add_error('damaged_quantity', 'Damaged quantity cannot exceed the returned quantity.')
-        
+        if has_damaged_items:
+            if damaged_quantity is None:
+                self.add_error("damaged_quantity", "Please specify how many items are damaged.")
+            if not damage_type or damage_type == 'none':
+                self.add_error("damage_type", "Please specify the type of damage.")
+            if returned_quantity and damaged_quantity and damaged_quantity > returned_quantity:
+                self.add_error("damaged_quantity", "Damaged quantity cannot exceed total returned quantity.")
+                
         return cleaned_data
 
 class MultiItemTransactionForm(forms.ModelForm):
