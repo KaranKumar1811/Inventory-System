@@ -27,6 +27,7 @@ from django.utils.decorators import method_decorator
 from django.contrib.auth.views import LogoutView
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.core.management import call_command
+import random
 
 # --- Custom Logout View ---
 class CustomLogoutView(LogoutView):
@@ -1726,34 +1727,215 @@ def generate_sample_data_api(request):
         }, status=403)
     
     # Get parameters from the request with defaults
-    employees = int(request.GET.get('employees', 10))
-    uniforms = int(request.GET.get('uniforms', 20))
-    locations = int(request.GET.get('locations', 5))
-    equipment = int(request.GET.get('equipment', 15))
-    clear = request.GET.get('clear', '0') == '1'
-    
     try:
-        # Call the management command with the parameters
-        call_command(
-            'generate_sample_data',
-            employees=employees,
-            uniforms=uniforms,
-            locations=locations,
-            equipment=equipment,
-            clear=clear
-        )
-        
+        employees = int(request.GET.get('employees', 10))
+        uniforms = int(request.GET.get('uniforms', 20))
+        locations = int(request.GET.get('locations', 5))
+        equipment = int(request.GET.get('equipment', 15))
+        clear = request.GET.get('clear', '0') == '1'
+    except ValueError as e:
         return JsonResponse({
-            'status': 'success',
-            'message': 'Sample data generated successfully',
-            'details': {
-                'employees': employees,
-                'uniforms': uniforms,
-                'locations': locations,
-                'equipment': equipment,
-                'clear': clear
-            }
-        })
+            'status': 'error',
+            'message': f'Invalid parameter value: {str(e)}'
+        }, status=400)
+    
+    results = {
+        'status': 'success',
+        'message': 'Sample data generation started',
+        'details': {
+            'employees_requested': employees,
+            'uniforms_requested': uniforms,
+            'locations_requested': locations,
+            'equipment_requested': equipment,
+            'clear': clear
+        },
+        'results': {}
+    }
+    
+    # Execute each part separately to avoid transaction issues
+    try:
+        if clear:
+            # Clear data in a separate transaction
+            try:
+                with transaction.atomic():
+                    # Delete in a specific order to avoid constraint errors
+                    EquipmentItem.objects.all().delete()
+                    SiteLocation.objects.all().delete()
+                    Uniform.objects.all().delete()
+                    UniformType.objects.all().delete()
+                    UniformSize.objects.all().delete()
+                    Employee.objects.all().delete()
+                results['results']['clear'] = 'success'
+            except Exception as e:
+                results['results']['clear'] = f'error: {str(e)}'
+        
+        # Create uniform types and sizes
+        try:
+            with transaction.atomic():
+                # Create uniform types
+                uniform_types = [
+                    'Long Sleeve Shirts',
+                    'Short Sleeve Shirts',
+                    'Pants',
+                    'Shorts',
+                    'Jackets',
+                    'Safety Vests',
+                    'Boots',
+                    'Gloves'
+                ]
+                for type_name in uniform_types:
+                    UniformType.objects.get_or_create(
+                        name=type_name,
+                        defaults={'description': f'Standard issue {type_name.lower()}'}
+                    )
+                
+                # Create uniform sizes
+                sizes = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL']
+                for i, size in enumerate(sizes):
+                    UniformSize.objects.get_or_create(
+                        name=size,
+                        defaults={'display_order': i}
+                    )
+                results['results']['types_and_sizes'] = 'success'
+        except Exception as e:
+            results['results']['types_and_sizes'] = f'error: {str(e)}'
+        
+        # Create employees
+        employees_created = 0
+        try:
+            with transaction.atomic():
+                for i in range(1, employees + 1):
+                    employee_id = f'EMP{i:04d}'
+                    first_name = random.choice([
+                        'John', 'Jane', 'Michael', 'Sarah', 'David', 'Lisa',
+                        'Robert', 'Patricia', 'James', 'Jennifer', 'Thomas', 'Mary'
+                    ])
+                    last_name = random.choice([
+                        'Smith', 'Jones', 'Williams', 'Brown', 'Davis', 'Miller',
+                        'Wilson', 'Moore', 'Taylor', 'Anderson', 'Jackson', 'Harris'
+                    ])
+                    email = f'{first_name.lower()}.{last_name.lower()}@example.com'
+                    
+                    Employee.objects.get_or_create(
+                        employee_id=employee_id,
+                        defaults={
+                            'first_name': first_name,
+                            'last_name': last_name,
+                            'email': email,
+                            'phone': f'555-{random.randint(100, 999)}-{random.randint(1000, 9999)}'
+                        }
+                    )
+                    employees_created += 1
+                results['results']['employees'] = f'created {employees_created} employees'
+        except Exception as e:
+            results['results']['employees'] = f'error: {str(e)}'
+        
+        # Create uniforms
+        uniforms_created = 0
+        try:
+            with transaction.atomic():
+                uniform_types = list(UniformType.objects.all())
+                sizes = list(UniformSize.objects.all())
+                
+                if uniform_types and sizes:
+                    for _ in range(uniforms):
+                        try:
+                            uniform_type = random.choice(uniform_types)
+                            size = random.choice(sizes)
+                            
+                            name = f"{uniform_type.name} - {random.choice(['Standard', 'Premium', 'Deluxe', 'Economy'])}"
+                            price = round(random.uniform(10.0, 100.0), 2)
+                            stock = random.randint(5, 100)
+                            damaged = random.randint(0, min(5, stock))
+                            
+                            # Try to create a unique uniform
+                            Uniform.objects.create(
+                                uniform_type=uniform_type,
+                                name=name,
+                                size=size.name,
+                                price=price,
+                                stock_quantity=stock,
+                                damaged_quantity=damaged
+                            )
+                            uniforms_created += 1
+                        except Exception:
+                            # Skip if we hit a unique constraint error
+                            continue
+                    
+                    results['results']['uniforms'] = f'created {uniforms_created} uniforms'
+                else:
+                    results['results']['uniforms'] = 'skipped - no types or sizes found'
+        except Exception as e:
+            results['results']['uniforms'] = f'error: {str(e)}'
+        
+        # Create locations
+        locations_created = 0
+        try:
+            with transaction.atomic():
+                for i in range(1, locations + 1):
+                    name = f"Location {i}"
+                    address = f"{random.randint(100, 999)} Main St, Suite {random.randint(100, 999)}"
+                    
+                    SiteLocation.objects.get_or_create(
+                        name=name,
+                        defaults={
+                            'address': address,
+                            'description': f'Sample location {i} for equipment storage',
+                            'is_active': random.choice([True, True, True, False])  # 75% active
+                        }
+                    )
+                    locations_created += 1
+                results['results']['locations'] = f'created {locations_created} locations'
+        except Exception as e:
+            results['results']['locations'] = f'error: {str(e)}'
+        
+        # Create equipment
+        equipment_created = 0
+        try:
+            with transaction.atomic():
+                locations = list(SiteLocation.objects.all())
+                
+                if locations:
+                    categories = ['Tools', 'Safety Equipment', 'Electronics', 'Machinery', 'Vehicles']
+                    statuses = ['available', 'assigned', 'maintenance', 'repair', 'retired']
+                    
+                    for i in range(1, equipment + 1):
+                        try:
+                            category = random.choice(categories)
+                            name = f"{category} Item {i}"
+                            serial = f"SN-{random.randint(10000, 99999)}"
+                            asset_tag = f"AT-{random.randint(1000, 9999)}"
+                            
+                            # Random date in the last 5 years
+                            days_ago = random.randint(0, 5*365)
+                            purchase_date = timezone.now().date() - datetime.timedelta(days=days_ago)
+                            
+                            EquipmentItem.objects.create(
+                                name=name,
+                                category=category,
+                                serial_number=serial,
+                                asset_tag=asset_tag,
+                                purchase_date=purchase_date,
+                                purchase_price=round(random.uniform(100.0, 5000.0), 2),
+                                status=random.choice(statuses),
+                                location=random.choice(locations) if random.random() > 0.2 else None,  # 80% assigned to a location
+                                description=f"Sample {category.lower()} item for testing",
+                                notes="Created by sample data generation script"
+                            )
+                            equipment_created += 1
+                        except Exception:
+                            # Skip if we hit a unique constraint or other error
+                            continue
+                    
+                    results['results']['equipment'] = f'created {equipment_created} equipment items'
+                else:
+                    results['results']['equipment'] = 'skipped - no locations found'
+        except Exception as e:
+            results['results']['equipment'] = f'error: {str(e)}'
+        
+        results['message'] = 'Sample data generation completed'
+        return JsonResponse(results)
+    
     except Exception as e:
         return JsonResponse({
             'status': 'error',
