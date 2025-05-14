@@ -26,6 +26,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.contrib.auth.views import LogoutView
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.core.management import call_command
 
 # --- Custom Logout View ---
 class CustomLogoutView(LogoutView):
@@ -1703,3 +1704,58 @@ def update_equipment_status(request, pk):
     
     # If not POST or invalid status, redirect to detail view
     return redirect('inventory:equipment_item_detail', pk=equipment.pk)
+
+@csrf_exempt
+def generate_sample_data_api(request):
+    """
+    Endpoint to generate sample data when accessed with the correct token.
+    Usage: /api/generate-data/?token=YOUR_SECRET_TOKEN&employees=10&uniforms=20&locations=5&equipment=15&clear=0
+    """
+    # Use an environment variable or a long random string as a token
+    # Default to a hardcoded value for simplicity, but change in production
+    secret_token = os.environ.get('SAMPLE_DATA_TOKEN', 'Q84jd8Hf92jKdS')
+    
+    # Get the token from the request
+    token = request.GET.get('token')
+    
+    # Check if the token is correct
+    if token != secret_token:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid token'
+        }, status=403)
+    
+    # Get parameters from the request with defaults
+    employees = int(request.GET.get('employees', 10))
+    uniforms = int(request.GET.get('uniforms', 20))
+    locations = int(request.GET.get('locations', 5))
+    equipment = int(request.GET.get('equipment', 15))
+    clear = request.GET.get('clear', '0') == '1'
+    
+    try:
+        # Call the management command with the parameters
+        call_command(
+            'generate_sample_data',
+            employees=employees,
+            uniforms=uniforms,
+            locations=locations,
+            equipment=equipment,
+            clear=clear
+        )
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Sample data generated successfully',
+            'details': {
+                'employees': employees,
+                'uniforms': uniforms,
+                'locations': locations,
+                'equipment': equipment,
+                'clear': clear
+            }
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)

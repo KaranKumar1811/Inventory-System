@@ -43,6 +43,8 @@ from .views import (
     EquipmentItemUpdateView,
     EquipmentItemAssignView,
     update_equipment_status,
+    # Data generation API
+    generate_sample_data_api,
 )
 from django.views.generic import TemplateView
 
@@ -113,6 +115,9 @@ urlpatterns = [
     path('equipment/<int:pk>/update/', EquipmentItemUpdateView.as_view(), name='equipment_item_update'),
     path('equipment/<int:pk>/assign/', EquipmentItemAssignView.as_view(), name='equipment_item_assign'),
     path('equipment/<int:pk>/status/', update_equipment_status, name='update_equipment_status'),
+    
+    # Sample Data Generation API
+    path('api/generate-data/', generate_sample_data_api, name='generate_sample_data_api'),
 ]
 
 
